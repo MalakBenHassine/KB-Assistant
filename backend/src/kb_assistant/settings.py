@@ -108,6 +108,47 @@ class IngestionSettings(BaseModel):
     stale_after_s: int = Field(default=600, ge=60)
 
 
+class LLMSettings(BaseModel):
+    # `extractive` runs offline (tests, CI, demo); `openai` is the real model.
+    provider: Literal["extractive", "openai"] = "extractive"
+    model: str = "gpt-5.6-terra"
+    api_key: SecretStr | None = None
+    reasoning_effort: Literal["none", "low", "medium", "high"] = "low"
+    timeout_s: float = Field(default=60.0, gt=0)
+    breaker_failure_threshold: int = Field(default=5, ge=1)
+    breaker_reset_s: float = Field(default=30.0, gt=0)
+
+    @model_validator(mode="after")
+    def _key_for_hosted_models(self) -> "LLMSettings":
+        if self.provider == "openai" and not (self.api_key and self.api_key.get_secret_value()):
+            raise ValueError("llm.api_key is required when provider is openai")
+        return self
+
+
+class RetrievalSettings(BaseModel):
+    """Placeholders until Phase 4 calibrates them on the evaluation set (ARCHITECTURE §5.7)."""
+
+    top_k: int = Field(default=20, ge=1, le=100)
+    rerank_top_n: int = Field(default=6, ge=1, le=20)
+    min_score: float = Field(default=0.2, ge=-1.0, le=1.0)
+    max_retries: int = Field(default=1, ge=0, le=3)
+    llm_relevance_check: bool = False
+    max_llm_calls: int = Field(default=6, ge=2, le=20)
+    answer_max_tokens: int = Field(default=1_200, ge=100, le=8_000)
+
+
+class RerankerSettings(BaseModel):
+    provider: Literal["none", "pinecone"] = "none"
+    model: str = "bge-reranker-v2-m3"
+    pinecone_api_key: SecretStr | None = None
+
+    @model_validator(mode="after")
+    def _pinecone_needs_a_key(self) -> "RerankerSettings":
+        if self.provider == "pinecone" and self.pinecone_api_key is None:
+            raise ValueError("reranker.pinecone_api_key is required for the pinecone reranker")
+        return self
+
+
 class _ProcessSettings(BaseSettings):
     """What every process needs: the API, the worker and the CLI."""
 
@@ -136,6 +177,9 @@ class Settings(_ProcessSettings):
     """API settings."""
 
     auth: AuthSettings
+    llm: LLMSettings = LLMSettings()
+    retrieval: RetrievalSettings = RetrievalSettings()
+    reranker: RerankerSettings = RerankerSettings()
     # Number of reverse proxies in front of the API whose X-Forwarded-For we trust.
     trusted_proxy_hops: int = Field(default=0, ge=0, le=3)
 

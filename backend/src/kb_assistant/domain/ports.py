@@ -4,11 +4,20 @@ Infrastructure implements these Protocols; tests implement them with fakes.
 The application layer never imports an adapter.
 """
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
 
+from kb_assistant.domain.chat import (
+    Conversation,
+    HydratedChunk,
+    JsonSchema,
+    Message,
+    RetrievedChunk,
+    StreamChunk,
+    StructuredReply,
+)
 from kb_assistant.domain.documents import (
     Chunk,
     Document,
@@ -22,6 +31,7 @@ from kb_assistant.domain.documents import (
     VectorRecord,
 )
 from kb_assistant.domain.ids import (
+    ConversationId,
     DepartmentId,
     DocumentId,
     MembershipId,
@@ -215,7 +225,62 @@ class VersionRepository(Protocol):
 class ChunkRepository(Protocol):
     async def add_many(self, chunks: Sequence[Chunk]) -> None: ...
 
+    async def hydrate(
+        self, vector_ids: Sequence[str], department_ids: Sequence[DepartmentId]
+    ) -> list[HydratedChunk]:
+        """Load chunks by vector id, repeating every isolation predicate (ARCHITECTURE §6.3).
+
+        Returns only chunks of the bound tenant, of the given departments, and of
+        their document's *current* version. Anything else the vector store
+        returned is silently absent: the caller compares counts to detect it.
+        """
+        ...
+
     async def count_for_version(self, version_id: VersionId) -> int: ...
+
+
+class ConversationRepository(Protocol):
+    async def add(self, conversation: Conversation) -> None: ...
+
+    async def get(self, conversation_id: ConversationId) -> Conversation | None: ...
+
+    async def list_for_member(self, membership_id: MembershipId) -> list[Conversation]: ...
+
+    async def touch(self, conversation_id: ConversationId, at: datetime) -> None: ...
+
+
+class MessageRepository(Protocol):
+    async def add(self, message: Message) -> None: ...
+
+    async def list_for_conversation(self, conversation_id: ConversationId) -> list[Message]: ...
+
+
+class ChatModel(Protocol):
+    """A language model, reduced to the two things the workflow needs (ADR-0006)."""
+
+    @property
+    def model_id(self) -> str: ...
+
+    async def structured(
+        self, *, system: str, user: str, schema: JsonSchema, max_output_tokens: int
+    ) -> StructuredReply:
+        """One JSON object matching `schema`. Raises `ProviderUnavailableError` on outage."""
+        ...
+
+    def stream(
+        self, *, system: str, user: str, max_output_tokens: int
+    ) -> AsyncIterator[StreamChunk]:
+        """Text deltas, then one final chunk carrying the token usage."""
+        ...
+
+
+class Reranker(Protocol):
+    @property
+    def model_id(self) -> str: ...
+
+    async def rerank(
+        self, query: str, chunks: Sequence[RetrievedChunk], top_n: int
+    ) -> list[RetrievedChunk]: ...
 
 
 class BlobStore(Protocol):
@@ -313,6 +378,12 @@ class UnitOfWork(Protocol):
 
     @property
     def chunks(self) -> ChunkRepository: ...
+
+    @property
+    def conversations(self) -> ConversationRepository: ...
+
+    @property
+    def messages(self) -> MessageRepository: ...
 
     async def bind(self, *, tenant_id: TenantId | None, user_id: UserId | None) -> None:
         """Scope the transaction to one tenant; clears any wider grant made before."""

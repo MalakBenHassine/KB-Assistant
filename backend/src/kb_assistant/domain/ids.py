@@ -20,6 +20,8 @@ TokenFamilyId = NewType("TokenFamilyId", UUID)
 DocumentId = NewType("DocumentId", UUID)
 VersionId = NewType("VersionId", UUID)
 ChunkId = NewType("ChunkId", UUID)
+ConversationId = NewType("ConversationId", UUID)
+MessageId = NewType("MessageId", UUID)
 
 
 def new_id() -> UUID:

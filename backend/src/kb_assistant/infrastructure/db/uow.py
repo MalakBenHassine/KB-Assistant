@@ -32,6 +32,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
 
+from kb_assistant.domain.chat import (
+    AbstainReason,
+    Citation,
+    Conversation,
+    HydratedChunk,
+    Intent,
+    Message,
+    RetrievalGrade,
+    TokenUsage,
+)
 from kb_assistant.domain.documents import (
     Chunk,
     Document,
@@ -42,10 +52,13 @@ from kb_assistant.domain.documents import (
 )
 from kb_assistant.domain.errors import ConflictError
 from kb_assistant.domain.ids import (
+    ChunkId,
+    ConversationId,
     DepartmentId,
     DocumentId,
     InvitationId,
     MembershipId,
+    MessageId,
     RefreshTokenId,
     TenantId,
     TokenFamilyId,
@@ -66,12 +79,14 @@ from kb_assistant.domain.models import (
 from kb_assistant.infrastructure.db.tables import (
     AuditLogRow,
     ChunkRow,
+    ConversationRow,
     DepartmentRow,
     DocumentRow,
     DocumentVersionRow,
     InvitationRow,
     MembershipDepartmentRow,
     MembershipRow,
+    MessageRow,
     RefreshTokenRow,
     TenantRow,
     UserRow,
@@ -122,6 +137,8 @@ class SqlAlchemyUnitOfWork:
         self.documents = _Documents(session, self._context)
         self.versions = _Versions(session, self._context)
         self.chunks = _Chunks(session, self._context)
+        self.conversations = _Conversations(session, self._context)
+        self.messages = _Messages(session, self._context)
 
     def _apply_context(
         self, _session: Session, _transaction: SessionTransaction, connection: Connection
@@ -829,6 +846,11 @@ class _Chunks:
             ],
         )
 
+    async def hydrate(
+        self, vector_ids: Sequence[str], department_ids: Sequence[DepartmentId]
+    ) -> list[HydratedChunk]:
+        return await _hydrate(self._s, self._ctx, vector_ids, department_ids)
+
     async def count_for_version(self, version_id: VersionId) -> int:
         count = await self._s.scalar(
             select(func.count())
@@ -839,3 +861,207 @@ class _Chunks:
             )
         )
         return int(count or 0)
+
+
+# --------------------------------------------------------------------------- retrieval and chat
+
+
+async def _hydrate(
+    session: AsyncSession,
+    context: _Context,
+    vector_ids: Sequence[str],
+    department_ids: Sequence[DepartmentId],
+) -> list[HydratedChunk]:
+    """Isolation check 2 (ARCHITECTURE §6.3): every predicate again, in SQL."""
+    if not vector_ids or not department_ids:
+        return []
+    rows = await session.execute(
+        select(ChunkRow, DocumentRow.title)
+        .join(
+            DocumentRow,
+            (DocumentRow.id == ChunkRow.document_id)
+            & (DocumentRow.tenant_id == ChunkRow.tenant_id)
+            # Only the document's current version: archived chunks never come back.
+            & (DocumentRow.current_version_id == ChunkRow.document_version_id),
+        )
+        .where(
+            ChunkRow.vector_id.in_(vector_ids),
+            ChunkRow.tenant_id == context.tenant_id,
+            ChunkRow.department_id.in_(department_ids),
+            DocumentRow.department_id == ChunkRow.department_id,
+        )
+    )
+    return [
+        HydratedChunk(
+            chunk_id=ChunkId(chunk.id),
+            vector_id=chunk.vector_id,
+            document_id=DocumentId(chunk.document_id),
+            version_id=VersionId(chunk.document_version_id),
+            department_id=DepartmentId(chunk.department_id),
+            document_title=title,
+            text=chunk.text,
+            heading_path=tuple(chunk.heading_path),
+            page_start=chunk.page_start,
+            page_end=chunk.page_end,
+        )
+        for chunk, title in rows
+    ]
+
+
+def _conversation(row: ConversationRow) -> Conversation:
+    return Conversation(
+        id=ConversationId(row.id),
+        tenant_id=TenantId(row.tenant_id),
+        membership_id=MembershipId(row.membership_id),
+        title=row.title,
+        summary=row.summary,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+class _Conversations:
+    def __init__(self, session: AsyncSession, context: _Context) -> None:
+        self._s = session
+        self._ctx = context
+
+    async def add(self, conversation: Conversation) -> None:
+        await self._s.execute(
+            insert(ConversationRow).values(
+                id=conversation.id,
+                tenant_id=conversation.tenant_id,
+                membership_id=conversation.membership_id,
+                title=conversation.title,
+                summary=conversation.summary,
+                created_at=conversation.created_at,
+                updated_at=conversation.updated_at,
+            )
+        )
+
+    async def get(self, conversation_id: ConversationId) -> Conversation | None:
+        row = await self._s.scalar(
+            select(ConversationRow).where(
+                ConversationRow.id == conversation_id,
+                ConversationRow.tenant_id == self._ctx.tenant_id,
+            )
+        )
+        return _conversation(row) if row else None
+
+    async def list_for_member(self, membership_id: MembershipId) -> list[Conversation]:
+        rows = await self._s.scalars(
+            select(ConversationRow)
+            .where(
+                ConversationRow.membership_id == membership_id,
+                ConversationRow.tenant_id == self._ctx.tenant_id,
+            )
+            .order_by(ConversationRow.updated_at.desc())
+            .limit(200)
+        )
+        return [_conversation(r) for r in rows]
+
+    async def touch(self, conversation_id: ConversationId, at: datetime) -> None:
+        await self._s.execute(
+            update(ConversationRow)
+            .where(
+                ConversationRow.id == conversation_id,
+                ConversationRow.tenant_id == self._ctx.tenant_id,
+            )
+            .values(updated_at=at)
+        )
+
+
+def _citation_json(c: Citation) -> dict[str, Any]:
+    return {
+        "alias": c.alias,
+        "chunk_id": str(c.chunk_id),
+        "document_id": str(c.document_id),
+        "document_title": c.document_title,
+        "heading_path": list(c.heading_path),
+        "page_start": c.page_start,
+        "page_end": c.page_end,
+    }
+
+
+def _citation(data: dict[str, Any]) -> Citation:
+    return Citation(
+        alias=data["alias"],
+        chunk_id=ChunkId(UUID(data["chunk_id"])),
+        document_id=DocumentId(UUID(data["document_id"])),
+        document_title=data["document_title"],
+        heading_path=tuple(data["heading_path"]),
+        page_start=data["page_start"],
+        page_end=data["page_end"],
+    )
+
+
+def _message(row: MessageRow) -> Message:
+    return Message(
+        id=MessageId(row.id),
+        tenant_id=TenantId(row.tenant_id),
+        conversation_id=ConversationId(row.conversation_id),
+        role=row.role,
+        content=row.content,
+        created_at=row.created_at,
+        request_id=row.request_id,
+        intent=Intent(row.intent) if row.intent else None,
+        grade=RetrievalGrade(row.grade) if row.grade else None,
+        abstained=row.abstained,
+        abstain_reason=AbstainReason(row.abstain_reason) if row.abstain_reason else None,
+        retrieved_chunk_ids=tuple(ChunkId(i) for i in row.retrieved_chunk_ids),
+        cited_chunk_ids=tuple(ChunkId(i) for i in row.cited_chunk_ids),
+        citations=tuple(_citation(c) for c in row.citations),
+        scores=dict(row.scores),
+        model=row.model,
+        prompt_version=row.prompt_version,
+        thresholds=dict(row.thresholds),
+        token_usage=TokenUsage(**row.token_usage),
+        latency_ms=row.latency_ms,
+    )
+
+
+class _Messages:
+    """Append-only for the API role (no UPDATE grant on `messages`)."""
+
+    def __init__(self, session: AsyncSession, context: _Context) -> None:
+        self._s = session
+        self._ctx = context
+
+    async def add(self, message: Message) -> None:
+        await self._s.execute(
+            insert(MessageRow).values(
+                id=message.id,
+                tenant_id=message.tenant_id,
+                conversation_id=message.conversation_id,
+                role=message.role,
+                content=message.content,
+                request_id=message.request_id,
+                intent=message.intent.value if message.intent else None,
+                grade=message.grade.value if message.grade else None,
+                abstained=message.abstained,
+                abstain_reason=message.abstain_reason.value if message.abstain_reason else None,
+                retrieved_chunk_ids=list(message.retrieved_chunk_ids),
+                cited_chunk_ids=list(message.cited_chunk_ids),
+                citations=[_citation_json(c) for c in message.citations],
+                scores=message.scores,
+                model=message.model,
+                prompt_version=message.prompt_version,
+                thresholds=message.thresholds,
+                token_usage={
+                    "input_tokens": message.token_usage.input_tokens,
+                    "output_tokens": message.token_usage.output_tokens,
+                },
+                latency_ms=message.latency_ms,
+                created_at=message.created_at,
+            )
+        )
+
+    async def list_for_conversation(self, conversation_id: ConversationId) -> list[Message]:
+        rows = await self._s.scalars(
+            select(MessageRow)
+            .where(
+                MessageRow.conversation_id == conversation_id,
+                MessageRow.tenant_id == self._ctx.tenant_id,
+            )
+            .order_by(MessageRow.created_at, MessageRow.id)
+        )
+        return [_message(r) for r in rows]

@@ -315,3 +315,63 @@ class VectorRecordRow(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
     )
+
+
+# ----------------------------------------------------------------------------- conversations
+
+
+class ConversationRow(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    tenant_id: Mapped[UUID]
+    membership_id: Mapped[UUID]
+    title: Mapped[str] = mapped_column(String(200))
+    summary: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        ForeignKeyConstraint(
+            ["membership_id", "tenant_id"],
+            ["memberships.id", "memberships.tenant_id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_conversations_member_updated", "membership_id", "updated_at"),
+    )
+
+
+class MessageRow(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    tenant_id: Mapped[UUID]
+    conversation_id: Mapped[UUID]
+    role: Mapped[str] = mapped_column(String(16))
+    content: Mapped[str] = mapped_column(Text)
+    request_id: Mapped[str | None] = mapped_column(String(64))
+    intent: Mapped[str | None] = mapped_column(String(32))
+    grade: Mapped[str | None] = mapped_column(String(16))
+    abstained: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    abstain_reason: Mapped[str | None] = mapped_column(String(64))
+    retrieved_chunk_ids: Mapped[list[UUID]] = mapped_column(ARRAY(PG_UUID(as_uuid=True)))
+    cited_chunk_ids: Mapped[list[UUID]] = mapped_column(ARRAY(PG_UUID(as_uuid=True)))
+    citations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    scores: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    model: Mapped[str | None] = mapped_column(String(100))
+    prompt_version: Mapped[str | None] = mapped_column(String(32))
+    thresholds: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    token_usage: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    latency_ms: Mapped[int | None]
+    created_at: Mapped[datetime]
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["conversation_id", "tenant_id"],
+            ["conversations.id", "conversations.tenant_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("role IN ('user', 'assistant')", name="role_known"),
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )

@@ -15,6 +15,7 @@ dependencies = [
     "celery[redis]>=5.6.3",
     "email-validator>=2.3.0",
     "fastapi>=0.151.0",
+    "langgraph>=1.2.13,<1.3",
     "openai>=3.35.1",
     "pgvector>=0.5.1",
     "pinecone>=10.0.0",
@@ -29,7 +30,7 @@ dependencies = [
     "structlog>=26.1.0",
     "tenacity>=9.2.1",
     "tiktoken>=0.14.0",
-    "uuid-utils>=1.1.0",
+    "uuid-utils>=0.12,<1.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -68,7 +69,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "S311", "ARG001", "PT011"]
+# Fakes implement ports: unused arguments are part of the signature.
+"tests/**" = ["S101", "S105", "S106", "S311", "ARG001", "ARG002", "PT011"]
 # Table and role names in DDL come from constants and a validated identifier.
 "migrations/**" = ["S608"]
 

@@ -5,17 +5,21 @@ building a container with fakes, and there are no global clients.
 """
 
 import asyncio
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
+from typing import Any
 
 from openai import AsyncOpenAI
-from pinecone import AsyncIndex
+from pinecone import AsyncIndex, AsyncPinecone
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from kb_assistant.application.answering.graph import AnswerPolicy, GraphDeps, build_answer_graph
+from kb_assistant.application.answering.service import AskQuestion, hydrate
 from kb_assistant.application.auth import AuthPolicy
 from kb_assistant.application.chunking import Chunker, ChunkingPolicy
 from kb_assistant.application.documents import UploadPolicy
@@ -23,11 +27,13 @@ from kb_assistant.application.ingestion import IngestDocumentVersion, IngestionP
 from kb_assistant.domain.ports import (
     AccessTokenService,
     BlobStore,
+    ChatModel,
     Clock,
     DocumentParser,
     Embedder,
     JobQueue,
     PasswordHasher,
+    Reranker,
     Tokenizer,
     UnitOfWork,
     VectorStore,
@@ -38,8 +44,12 @@ from kb_assistant.infrastructure.db.tables import EMBEDDING_DIMENSION
 from kb_assistant.infrastructure.db.uow import SqlAlchemyUnitOfWork
 from kb_assistant.infrastructure.embeddings import HashingEmbedder, OpenAIEmbedder
 from kb_assistant.infrastructure.jobs import CeleryJobQueue, celery_producer
+from kb_assistant.infrastructure.llm.extractive import ExtractiveChatModel
+from kb_assistant.infrastructure.llm.openai_chat import OpenAIChatModel
 from kb_assistant.infrastructure.observability.logging import configure_logging
 from kb_assistant.infrastructure.parsing import DocumentParserImpl
+from kb_assistant.infrastructure.rerank import PineconeReranker
+from kb_assistant.infrastructure.resilience import CircuitBreaker
 from kb_assistant.infrastructure.security.jwt import JwtAccessTokenService, SigningKeys
 from kb_assistant.infrastructure.security.passwords import Argon2PasswordHasher
 from kb_assistant.infrastructure.storage import S3BlobStore
@@ -48,6 +58,9 @@ from kb_assistant.infrastructure.vector.pgvector import PgVectorStore
 from kb_assistant.infrastructure.vector.pinecone import PineconeVectorStore
 from kb_assistant.settings import (
     EmbeddingSettings,
+    LLMSettings,
+    RerankerSettings,
+    RetrievalSettings,
     Settings,
     StorageSettings,
     VectorStoreSettings,
@@ -119,6 +132,47 @@ def build_vector_store(
     return PgVectorStore(engine), None
 
 
+def build_chat_model(settings: LLMSettings) -> ChatModel:
+    if settings.provider == "extractive":
+        return ExtractiveChatModel()
+    if settings.api_key is None:  # also rejected by LLMSettings' validator
+        raise ValueError("llm.api_key is required for openai")
+    return OpenAIChatModel(
+        AsyncOpenAI(api_key=settings.api_key.get_secret_value(), max_retries=0),
+        model=settings.model,
+        reasoning_effort=settings.reasoning_effort,
+        timeout_s=settings.timeout_s,
+        breaker=CircuitBreaker(
+            failure_threshold=settings.breaker_failure_threshold,
+            reset_after_s=settings.breaker_reset_s,
+            clock=time.monotonic,
+        ),
+    )
+
+
+def build_reranker(settings: RerankerSettings) -> tuple[Reranker | None, Closer | None]:
+    if settings.provider == "none":
+        return None, None
+    if settings.pinecone_api_key is None:
+        raise ValueError("reranker.pinecone_api_key is required")
+    reranker = PineconeReranker(
+        AsyncPinecone(api_key=settings.pinecone_api_key.get_secret_value()), model=settings.model
+    )
+    return reranker, reranker.aclose
+
+
+def answer_policy(settings: RetrievalSettings) -> AnswerPolicy:
+    return AnswerPolicy(
+        top_k=settings.top_k,
+        rerank_top_n=settings.rerank_top_n,
+        min_score=settings.min_score,
+        max_retries=settings.max_retries,
+        llm_relevance_check=settings.llm_relevance_check,
+        max_llm_calls=settings.max_llm_calls,
+        answer_max_tokens=settings.answer_max_tokens,
+    )
+
+
 # ----------------------------------------------------------------------------- API
 
 
@@ -145,6 +199,12 @@ class Container:
     blobs: BlobStore
     jobs: JobQueue
     upload_policy: UploadPolicy
+    embedder: Embedder
+    vectors: VectorStore
+    chat: ChatModel
+    reranker: Reranker | None
+    answer_policy: AnswerPolicy
+    answer_graph: Any = None
     closers: list[Closer] = field(default_factory=list)
     startup_hooks: list[Closer] = field(default_factory=list)
 
@@ -160,6 +220,15 @@ class Container:
                 yield SqlAlchemyUnitOfWork(session)
             finally:
                 await session.rollback()
+
+    def ask(self) -> AskQuestion:
+        return AskQuestion(
+            uow_factory=self.unit_of_work,
+            graph=self.answer_graph,
+            policy=self.answer_policy,
+            clock=self.clock,
+            model_id=self.chat.model_id,
+        )
 
     async def readiness(self) -> Readiness:
         database, redis = await asyncio.gather(self._database_ok(), self._redis_ok())
@@ -195,6 +264,10 @@ def build_container(
     signing_keys: SigningKeys | None = None,
     jobs: JobQueue | None = None,
     blobs: BlobStore | None = None,
+    chat: ChatModel | None = None,
+    embedder: Embedder | None = None,
+    vectors: VectorStore | None = None,
+    reranker: Reranker | None = None,
 ) -> Container:
     clock = clock or SystemClock()
     engine = build_engine(settings.database, application_name="kb-assistant-api")
@@ -209,7 +282,18 @@ def build_container(
         if settings.storage.create_bucket:
             startup_hooks.append(s3.ensure_bucket)
         blobs = s3
-    return Container(
+    embedder = embedder or build_embedder(settings.embeddings, TiktokenTokenizer())
+    if vectors is None:
+        vectors, close_vectors = build_vector_store(
+            settings.vector_store, engine, embedder.dimension
+        )
+        if close_vectors is not None:
+            closers.append(close_vectors)
+    if reranker is None:
+        reranker, close_reranker = build_reranker(settings.reranker)
+        if close_reranker is not None:
+            closers.append(close_reranker)
+    container = Container(
         settings=settings,
         engine=engine,
         sessionmaker=build_sessionmaker(engine),
@@ -236,9 +320,25 @@ def build_container(
         blobs=blobs,
         jobs=jobs or CeleryJobQueue(celery_producer(settings.redis.url.get_secret_value())),
         upload_policy=UploadPolicy(max_bytes=settings.ingestion.max_upload_mib * 1024 * 1024),
+        embedder=embedder,
+        vectors=vectors,
+        chat=chat or build_chat_model(settings.llm),
+        reranker=reranker,
+        answer_policy=answer_policy(settings.retrieval),
         closers=closers,
         startup_hooks=startup_hooks,
     )
+    container.answer_graph = build_answer_graph(
+        GraphDeps(
+            embedder=container.embedder,
+            vectors=container.vectors,
+            hydrate=lambda ids, scope: hydrate(container.unit_of_work, ids, scope),
+            chat=container.chat,
+            reranker=container.reranker,
+            policy=container.answer_policy,
+        )
+    )
+    return container
 
 
 # ----------------------------------------------------------------------------- worker
