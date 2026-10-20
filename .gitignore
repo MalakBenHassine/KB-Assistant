@@ -28,3 +28,6 @@ eval/reports/*.local.*
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Local signing keys (make keys)
+.secrets/
