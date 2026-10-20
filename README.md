@@ -4,9 +4,9 @@
 > natural language and get grounded answers with citations, drawn **only** from
 > the documents they are authorized to read.
 
-[![CI](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/ci.yml)
-[![Security](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/security.yml)
-[![CD](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/cd.yml)
+[![CI](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/ci.yml)
+[![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
+[![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
 **Status:** Phase 1 of 7 done. Multi-tenant identity, authorization and the
 delivery pipeline are in place; document ingestion is next.

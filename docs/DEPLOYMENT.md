@@ -44,7 +44,7 @@ pipeline and not pushed by hand:
 
 ```bash
 cosign verify ghcr.io/malakbenhassine/kb-assistant-backend:main \
-  --certificate-identity "https://github.com/MalakBenHassine/kb-assistant/.github/workflows/cd.yml@refs/heads/main" \
+  --certificate-identity "https://github.com/MalakBenHassine/KB-Assistant/.github/workflows/cd.yml@refs/heads/main" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
