@@ -7,6 +7,12 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Document ingestion: upload with content-based type detection and size
+  limits, PDF/DOCX/Markdown/HTML parsing, text cleaning (invisible characters,
+  prompt-delimiter neutralisation, running headers and footers), structure-aware
+  token-bounded chunking with overlap, batched embeddings with retries, pgvector
+  and Pinecone adapters behind one contract, idempotent and versioned indexing,
+  retry endpoint. Celery worker runs the pipeline; SeaweedFS stores originals.
 - Backend (FastAPI, hexagonal layout enforced by import contracts):
   login, rotating refresh tokens with reuse detection, logout, invitations and
   registration, tenant switching, departments, memberships, profile.

@@ -8,8 +8,9 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 1 of 7 done. Multi-tenant identity, authorization and the
-delivery pipeline are in place; document ingestion is next.
+**Status:** Phase 2 of 7 done. Multi-tenant identity, authorization, the
+delivery pipeline and document ingestion are in place; retrieval and the
+LangGraph workflow are next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -21,7 +22,7 @@ delivery pipeline are in place; document ingestion is next.
 | Thresholds copied from a blog | Thresholds calibrated on an evaluation set, with a CI gate on regressions |
 | One user | Tenants, departments, roles, audit log, rate limits, per-tenant token budgets |
 
-## What Phase 1 already proves
+## What is already proven
 
 - **Tenant isolation in the database itself.** Every tenant-scoped table has a
   PostgreSQL row-level-security policy. The API connects as a role that does
@@ -43,6 +44,15 @@ delivery pipeline are in place; document ingestion is next.
   images with SBOM and provenance, signed with cosign keyless, deployed only
   after CI is green.
 
+- **Ingestion that is safe to retry.** Uploads are typed by their bytes, not
+  their name; the worker parses PDF, DOCX, Markdown and HTML into sections,
+  chunks them by tokens with overlap, embeds in batches and indexes. Every step
+  is idempotent, a new version archives the old one without deleting it, and
+  Postgres stays the source of truth over the vector index
+  ([ADR-0015](docs/adr/0015-ingestion-consistency-and-object-storage.md)).
+- **Runs without paid keys.** pgvector and a deterministic offline embedder
+  stand in for Pinecone and OpenAI, behind the same ports and contract tests.
+
 ## Run it
 
 Requirements: Docker with Compose, [uv](https://docs.astral.sh/uv/), `make`, `openssl`.
@@ -52,7 +62,9 @@ make up      # generates .env and a signing key on first run, builds, starts, wa
 make seed    # two companies (Acme, Globex), three departments each, seven users
 ```
 
-Then open the API documentation at http://127.0.0.1:8000/docs. Every demo user
+Then open the API documentation at http://127.0.0.1:8000/docs, sign in, and
+upload a document with `POST /v1/documents`; its status moves from `pending`
+to `indexed` within seconds. Every demo user
 has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
 
 | User | Company | Role | Departments |
@@ -101,8 +113,8 @@ Pinecone (pgvector locally), OpenAI, OpenTelemetry, Prometheus, Grafana, Helm.
 |-------|-------|--------|
 | 0 | Design: architecture, ADRs, threat model | Done |
 | 1 | Foundations: auth, tenancy, RLS, compose stack, CI/CD | Done |
-| 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Next |
-| 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | — |
+| 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Done |
+| 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Next |
 | 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | — |
 | 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | — |
 | 6 | Frontend: chat with citations, document management, dashboard | — |

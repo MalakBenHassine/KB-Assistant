@@ -79,7 +79,7 @@ C4Container
         Container(worker, "Ingestion worker", "Python 3.12, Celery", "Parse, chunk, embed, upsert, archive versions (ADR-0009)")
         ContainerDb(pg, "PostgreSQL", "PostgreSQL 17 + RLS", "Tenants, users, documents, versions, chunks (text), conversations, feedback, audit log")
         ContainerDb(redis, "Redis", "Redis 8", "Job queue, rate-limit buckets, short-lived caches")
-        ContainerDb(blob, "Object storage", "S3-compatible (MinIO locally)", "Original uploaded files")
+        ContainerDb(blob, "Object storage", "S3-compatible (SeaweedFS locally)", "Original uploaded files")
         Container(otel, "OTel Collector", "OpenTelemetry", "Receives traces and metrics, exports to Tempo and Prometheus")
     }
 
@@ -109,7 +109,8 @@ Notes on the container choices:
 - **Object storage** is an addition to the spec. The worker must not receive file
   bytes through Redis (size, retention, and a queue is not a file store), and the
   original file is needed to re-ingest with a new chunker or embedding model.
-  MinIO in docker-compose, any S3 in production.
+  SeaweedFS in docker-compose (MinIO stopped publishing images, ADR-0015),
+  any S3 in production.
 - **The web app is a backend-for-frontend**, not just static pages: the browser
   never sees a JWT ([ADR-0008](adr/0008-nextjs-bff-token-handling.md)).
 - **Local and CI profiles** replace Pinecone with pgvector and OpenAI with
@@ -356,6 +357,8 @@ three checks; nothing above them changes.
 
 ## 7. Ingestion
 
+Consistency rules and failure handling: [ADR-0015](adr/0015-ingestion-consistency-and-object-storage.md).
+
 ```mermaid
 stateDiagram-v2
     [*] --> pending: upload accepted (file in blob store)
@@ -497,6 +500,8 @@ filesystem.
 | Celery **or** arq | Celery (arq is in maintenance-only mode) | [ADR-0009](adr/0009-celery-for-background-jobs.md) |
 | Not specified | Object storage for original files | §3 |
 | Not specified | Postgres row-level security as a third isolation check | §6.3 |
+| MinIO for local object storage | SeaweedFS (MinIO images discontinued) | [ADR-0015](adr/0015-ingestion-consistency-and-object-storage.md) |
+| `documents.status` | Status lives on each version; the document shows its latest version's | §7 |
 | Cross-encoder or LLM reranker | `bge-reranker-v2-m3`, same weights hosted and local | [ADR-0011](adr/0011-reranking-with-bge-reranker-v2-m3.md) |
 | `users.tenant_id`, `users.role`, `users.departments[]` | `memberships` (user × tenant, role) + `membership_departments` | §6.1, [ADR-0012](adr/0012-identity-separate-from-tenant-membership.md) |
 | Not specified | `DocumentSource` port, `documents.source_type` | [ADR-0013](adr/0013-upload-first-connectors-behind-a-source-port.md) |

@@ -21,5 +21,6 @@ the history of *why* is never rewritten.
 | [0012](0012-identity-separate-from-tenant-membership.md) | Identity separate from tenant membership | Proposed |
 | [0013](0013-upload-first-connectors-behind-a-source-port.md) | Upload first; connectors behind a `DocumentSource` port | Proposed |
 | [0014](0014-delivery-pipeline-and-deployment-targets.md) | Delivery pipeline: web on Vercel, signed images for the backend | Proposed |
+| [0015](0015-ingestion-consistency-and-object-storage.md) | Ingestion consistency; SeaweedFS instead of MinIO | Proposed |
 
 Template: [`template.md`](template.md).
