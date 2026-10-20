@@ -4,8 +4,12 @@
 > natural language and get grounded answers with citations, drawn **only** from
 > the documents they are authorized to read.
 
-**Status:** Phase 0 — design under review. No application code yet, on purpose:
-the decisions that are expensive to reverse are written down first.
+[![CI](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/ci.yml)
+[![Security](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/security.yml)
+[![CD](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/kb-assistant/actions/workflows/cd.yml)
+
+**Status:** Phase 1 of 7 done. Multi-tenant identity, authorization and the
+delivery pipeline are in place; document ingestion is next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -17,34 +21,90 @@ the decisions that are expensive to reverse are written down first.
 | Thresholds copied from a blog | Thresholds calibrated on an evaluation set, with a CI gate on regressions |
 | One user | Tenants, departments, roles, audit log, rate limits, per-tenant token budgets |
 
+## What Phase 1 already proves
+
+- **Tenant isolation in the database itself.** Every tenant-scoped table has a
+  PostgreSQL row-level-security policy. The API connects as a role that does
+  not own the tables and cannot bypass RLS, so a forgotten `WHERE tenant_id`
+  returns nothing instead of another company's rows. Tested as that role.
+- **Identity separate from membership** ([ADR-0012](docs/adr/0012-identity-separate-from-tenant-membership.md)).
+  A consultant can belong to two companies; a token is valid for exactly one,
+  and being an admin in one grants nothing in the other.
+- **Authorization data is never trusted from the token.** Role and departments
+  are read from the membership on every request: a demotion or a removal takes
+  effect on the next call, not when the token expires.
+- **Refresh tokens rotate, and reuse is detected.** Replaying an old refresh
+  token revokes the whole session family.
+- **No endpoint is public by omission.** A test reads the OpenAPI schema and
+  fails if any operation is unauthenticated without being on a reviewed list.
+- **A hexagonal codebase, enforced.** Import contracts in CI keep frameworks and
+  vendor SDKs out of the business rules.
+- **A delivery pipeline you could audit.** Actions pinned by SHA, multi-arch
+  images with SBOM and provenance, signed with cosign keyless, deployed only
+  after CI is green.
+
+## Run it
+
+Requirements: Docker with Compose, [uv](https://docs.astral.sh/uv/), `make`, `openssl`.
+
+```bash
+make up      # generates .env and a signing key on first run, builds, starts, waits until healthy
+make seed    # two companies (Acme, Globex), three departments each, seven users
+```
+
+Then open the API documentation at http://127.0.0.1:8000/docs. Every demo user
+has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
+
+| User | Company | Role | Departments |
+|------|---------|------|-------------|
+| alice@acme.example | Acme | tenant_admin | all |
+| bob@acme.example | Acme | dept_admin | engineering |
+| carol@acme.example | Acme | employee | hr |
+| dave@acme.example | Acme | employee | engineering, product |
+| erin@globex.example | Globex | tenant_admin | all |
+| frank@globex.example | Globex | employee | engineering |
+| grace@consulting.example | Acme **and** Globex | employee / dept_admin | engineering / product |
+
+`make help` lists the other targets (`down`, `clean`, `logs`, `lint`, `test`, `check`).
+
+## Develop
+
+```bash
+make install   # backend and web dependencies, git hooks
+make check     # everything CI runs: format, lint, mypy --strict, import contracts, tests, coverage gate
+```
+
+The backend tests start real PostgreSQL and Redis containers (testcontainers)
+and run the real Alembic migrations, so row-level security is exercised exactly
+as in production.
+
 ## Design documents
 
-- [Architecture](docs/ARCHITECTURE.md): C4 context and containers, the LangGraph
-  workflow, the request sequence, the isolation model, ingestion, data model.
+- [Architecture](docs/ARCHITECTURE.md): C4 views, the LangGraph workflow, the
+  request sequence, the three isolation checks, ingestion, data model.
 - [Security and threat model](docs/SECURITY.md): twelve threats, their
-  mitigations, and the test that proves each mitigation.
-- [Architecture Decision Records](docs/adr/README.md): vector store, tenant
-  isolation, chunking, authentication, provider abstraction, orchestration,
-  token handling, background jobs, code layout, reranking, identity and
-  membership, document sources.
+  mitigations, and the test that proves each one.
+- [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
+- [Architecture Decision Records](docs/adr/README.md): fourteen decisions, each
+  with the options weighed and when to revisit it.
 
-## Planned stack
+## Stack
 
-Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · LangGraph ·
-Pinecone (pgvector locally) · OpenAI · PostgreSQL with row-level security · Redis ·
-Celery · Next.js (App Router) · TypeScript · Tailwind · OpenTelemetry · Prometheus ·
-Grafana · Langfuse · Docker · Kubernetes (Helm) · GitHub Actions
+Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · PostgreSQL
+with row-level security · Redis · Celery · Next.js 16 · TypeScript · Tailwind ·
+Docker · GitHub Actions · cosign · Trivy · CodeQL. Coming next: LangGraph,
+Pinecone (pgvector locally), OpenAI, OpenTelemetry, Prometheus, Grafana, Helm.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 0 | Design: architecture, ADRs, threat model | In review |
-| 1 | Foundations: monorepo, compose, config, migrations, auth + RBAC, CI | — |
-| 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | — |
+| 0 | Design: architecture, ADRs, threat model | Done |
+| 1 | Foundations: auth, tenancy, RLS, compose stack, CI/CD | Done |
+| 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Next |
 | 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | — |
 | 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | — |
-| 5 | Enterprise features: feedback, analytics, audit log, memory, limits | — |
+| 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | — |
 | 6 | Frontend: chat with citations, document management, dashboard | — |
 | 7 | Production readiness: Helm, tracing, dashboards, load test | — |
 

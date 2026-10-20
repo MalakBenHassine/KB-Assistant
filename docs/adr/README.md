@@ -20,5 +20,6 @@ the history of *why* is never rewritten.
 | [0011](0011-reranking-with-bge-reranker-v2-m3.md) | Reranking with `bge-reranker-v2-m3` | Proposed |
 | [0012](0012-identity-separate-from-tenant-membership.md) | Identity separate from tenant membership | Proposed |
 | [0013](0013-upload-first-connectors-behind-a-source-port.md) | Upload first; connectors behind a `DocumentSource` port | Proposed |
+| [0014](0014-delivery-pipeline-and-deployment-targets.md) | Delivery pipeline: web on Vercel, signed images for the backend | Proposed |
 
 Template: [`template.md`](template.md).
