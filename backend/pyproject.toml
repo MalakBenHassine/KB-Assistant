@@ -1,0 +1,129 @@
+[project]
+name = "kb-assistant"
+version = "0.1.0"
+description = "Multi-tenant enterprise knowledge-base assistant: API and ingestion worker"
+authors = [
+    { name = "malak ben hassine", email = "168741768+MalakBenHassine@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "argon2-cffi>=25.1.0",
+    "asyncpg>=0.32.0",
+    "celery[redis]>=5.6.3",
+    "email-validator>=2.3.0",
+    "fastapi>=0.151.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "pyjwt[crypto]>=2.15.1",
+    "redis>=6.4.0",
+    "sqlalchemy[asyncio]>=2.1.5",
+    "structlog>=26.1.0",
+    "uuid-utils>=1.1.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "import-linter>=2.15",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+    "testcontainers[postgres,redis]>=4.15.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "UP", "N", "S", "BLE", "C4", "DTZ", "SIM",
+    "RUF", "ASYNC", "PT", "RET", "TID", "ARG", "PTH", "ERA",
+]
+ignore = [
+    "RUF012",  # SQLAlchemy and Pydantic class attributes are not mutable defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S311", "ARG001", "PT011"]
+# Table and role names in DDL come from constants and a validated identifier.
+"migrations/**" = ["S608"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+files = ["src", "tests", "migrations"]
+explicit_package_bases = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["celery.*", "testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "-ra --strict-markers --strict-config"
+
+[tool.coverage.run]
+source = ["kb_assistant"]
+branch = true
+# SQLAlchemy runs async I/O in greenlets; without this, lines after an await go uncounted.
+concurrency = ["greenlet", "thread"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "\\.\\.\\.$"]
+
+[tool.importlinter]
+root_package = "kb_assistant"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layers depend inward only (ADR-0010)"
+type = "layers"
+layers = [
+    "kb_assistant.api | kb_assistant.worker | kb_assistant.cli",
+    "kb_assistant.bootstrap",
+    "kb_assistant.infrastructure",
+    "kb_assistant.settings",
+    "kb_assistant.application",
+    "kb_assistant.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Entry points reach adapters only through the composition root"
+type = "forbidden"
+source_modules = ["kb_assistant.api", "kb_assistant.worker"]
+forbidden_modules = ["kb_assistant.infrastructure"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Business rules import no framework, driver or vendor SDK"
+type = "forbidden"
+source_modules = ["kb_assistant.domain", "kb_assistant.application"]
+forbidden_modules = [
+    "fastapi", "starlette", "pydantic", "sqlalchemy", "asyncpg", "redis",
+    "celery", "jwt", "argon2", "structlog",
+]

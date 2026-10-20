@@ -1,0 +1,1 @@
+"""KB Assistant backend."""
