@@ -26,18 +26,31 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Connection, event, insert, select, text, update
+from sqlalchemy import Connection, event, func, insert, or_, select, text, update
+from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
 
+from kb_assistant.domain.documents import (
+    Chunk,
+    Document,
+    DocumentVersion,
+    IngestionFailure,
+    MimeType,
+    VersionStatus,
+)
+from kb_assistant.domain.errors import ConflictError
 from kb_assistant.domain.ids import (
     DepartmentId,
+    DocumentId,
     InvitationId,
     MembershipId,
     RefreshTokenId,
     TenantId,
     TokenFamilyId,
     UserId,
+    VersionId,
     new_id,
 )
 from kb_assistant.domain.models import (
@@ -52,7 +65,10 @@ from kb_assistant.domain.models import (
 )
 from kb_assistant.infrastructure.db.tables import (
     AuditLogRow,
+    ChunkRow,
     DepartmentRow,
+    DocumentRow,
+    DocumentVersionRow,
     InvitationRow,
     MembershipDepartmentRow,
     MembershipRow,
@@ -103,6 +119,9 @@ class SqlAlchemyUnitOfWork:
         self.invitations = _Invitations(session, self._context)
         self.refresh_tokens = _RefreshTokens(session)
         self.audit = _Audit(session)
+        self.documents = _Documents(session, self._context)
+        self.versions = _Versions(session, self._context)
+        self.chunks = _Chunks(session, self._context)
 
     def _apply_context(
         self, _session: Session, _transaction: SessionTransaction, connection: Connection
@@ -488,3 +507,335 @@ def _valid_ip(raw: str | None) -> str | None:
         return str(ipaddress.ip_address(raw))
     except ValueError:
         return None
+
+
+# --------------------------------------------------------------------------- documents
+
+
+def _document(row: DocumentRow) -> Document:
+    return Document(
+        id=DocumentId(row.id),
+        tenant_id=TenantId(row.tenant_id),
+        department_id=DepartmentId(row.department_id),
+        title=row.title,
+        created_by=MembershipId(row.created_by),
+        created_at=row.created_at,
+        current_version_id=VersionId(row.current_version_id) if row.current_version_id else None,
+    )
+
+
+def _version(row: DocumentVersionRow) -> DocumentVersion:
+    failure = (
+        IngestionFailure(row.error_code, row.error_message or "", bool(row.error_retryable))
+        if row.error_code
+        else None
+    )
+    return DocumentVersion(
+        id=VersionId(row.id),
+        document_id=DocumentId(row.document_id),
+        tenant_id=TenantId(row.tenant_id),
+        version=row.version,
+        checksum=row.checksum,
+        filename=row.filename,
+        mime_type=MimeType(row.mime_type),
+        size_bytes=row.size_bytes,
+        blob_key=row.blob_key,
+        status=VersionStatus(row.status),
+        failure=failure,
+        attempts=row.attempts,
+        chunk_count=row.chunk_count,
+        embedding_model=row.embedding_model,
+        embedding_tokens=row.embedding_tokens,
+        created_by=MembershipId(row.created_by),
+        created_at=row.created_at,
+        processing_started_at=row.processing_started_at,
+        indexed_at=row.indexed_at,
+        archived_at=row.archived_at,
+    )
+
+
+class _Documents:
+    def __init__(self, session: AsyncSession, context: _Context) -> None:
+        self._s = session
+        self._ctx = context
+
+    async def add(self, document: Document) -> None:
+        await self._s.execute(
+            insert(DocumentRow).values(
+                id=document.id,
+                tenant_id=document.tenant_id,
+                department_id=document.department_id,
+                title=document.title,
+                created_by=document.created_by,
+                created_at=document.created_at,
+            )
+        )
+
+    async def get(self, document_id: DocumentId) -> Document | None:
+        row = await self._s.scalar(
+            select(DocumentRow).where(
+                DocumentRow.id == document_id, DocumentRow.tenant_id == self._ctx.tenant_id
+            )
+        )
+        return _document(row) if row else None
+
+    async def list_in_departments(self, department_ids: Sequence[DepartmentId]) -> list[Document]:
+        if not department_ids:
+            return []
+        rows = await self._s.scalars(
+            select(DocumentRow)
+            .where(
+                DocumentRow.tenant_id == self._ctx.tenant_id,
+                DocumentRow.department_id.in_(department_ids),
+            )
+            .order_by(DocumentRow.title, DocumentRow.id)
+        )
+        return [_document(r) for r in rows]
+
+    async def find_by_checksum(self, department_id: DepartmentId, checksum: str) -> Document | None:
+        latest = (
+            select(
+                DocumentVersionRow.document_id,
+                func.max(DocumentVersionRow.version).label("version"),
+            )
+            .where(DocumentVersionRow.tenant_id == self._ctx.tenant_id)
+            .group_by(DocumentVersionRow.document_id)
+            .subquery()
+        )
+        row = await self._s.scalar(
+            select(DocumentRow)
+            .join(latest, latest.c.document_id == DocumentRow.id)
+            .join(
+                DocumentVersionRow,
+                (DocumentVersionRow.document_id == latest.c.document_id)
+                & (DocumentVersionRow.version == latest.c.version),
+            )
+            .where(
+                DocumentRow.tenant_id == self._ctx.tenant_id,
+                DocumentRow.department_id == department_id,
+                DocumentVersionRow.checksum == checksum,
+                DocumentVersionRow.status != VersionStatus.FAILED.value,
+            )
+            .limit(1)
+        )
+        return _document(row) if row else None
+
+    async def set_current_version(self, document_id: DocumentId, version_id: VersionId) -> None:
+        await self._s.execute(
+            update(DocumentRow)
+            .where(DocumentRow.id == document_id, DocumentRow.tenant_id == self._ctx.tenant_id)
+            .values(current_version_id=version_id)
+        )
+
+
+class _Versions:
+    def __init__(self, session: AsyncSession, context: _Context) -> None:
+        self._s = session
+        self._ctx = context
+
+    def _where(self, version_id: VersionId) -> tuple[Any, ...]:
+        return (
+            DocumentVersionRow.id == version_id,
+            DocumentVersionRow.tenant_id == self._ctx.tenant_id,
+        )
+
+    async def add(self, version: DocumentVersion) -> None:
+        try:
+            async with self._s.begin_nested():
+                await self._s.execute(
+                    insert(DocumentVersionRow).values(
+                        id=version.id,
+                        document_id=version.document_id,
+                        tenant_id=version.tenant_id,
+                        version=version.version,
+                        checksum=version.checksum,
+                        filename=version.filename,
+                        mime_type=version.mime_type.value,
+                        size_bytes=version.size_bytes,
+                        blob_key=version.blob_key,
+                        status=version.status.value,
+                        created_by=version.created_by,
+                        created_at=version.created_at,
+                    )
+                )
+        except IntegrityError as exc:
+            raise ConflictError(
+                "Another version of this document was uploaded at the same time. Try again."
+            ) from exc
+
+    async def get(self, version_id: VersionId) -> DocumentVersion | None:
+        row = await self._s.scalar(select(DocumentVersionRow).where(*self._where(version_id)))
+        return _version(row) if row else None
+
+    async def latest(self, document_id: DocumentId) -> DocumentVersion | None:
+        row = await self._s.scalar(
+            select(DocumentVersionRow)
+            .where(
+                DocumentVersionRow.document_id == document_id,
+                DocumentVersionRow.tenant_id == self._ctx.tenant_id,
+            )
+            .order_by(DocumentVersionRow.version.desc())
+            .limit(1)
+        )
+        return _version(row) if row else None
+
+    async def list_for_document(self, document_id: DocumentId) -> list[DocumentVersion]:
+        rows = await self._s.scalars(
+            select(DocumentVersionRow)
+            .where(
+                DocumentVersionRow.document_id == document_id,
+                DocumentVersionRow.tenant_id == self._ctx.tenant_id,
+            )
+            .order_by(DocumentVersionRow.version.desc())
+        )
+        return [_version(r) for r in rows]
+
+    async def latest_for_documents(
+        self, document_ids: Sequence[DocumentId]
+    ) -> dict[DocumentId, DocumentVersion]:
+        if not document_ids:
+            return {}
+        rows = await self._s.scalars(
+            select(DocumentVersionRow)
+            .where(
+                DocumentVersionRow.document_id.in_(document_ids),
+                DocumentVersionRow.tenant_id == self._ctx.tenant_id,
+            )
+            .order_by(DocumentVersionRow.document_id, DocumentVersionRow.version.desc())
+            .ext(distinct_on(DocumentVersionRow.document_id))
+        )
+        return {DocumentId(r.document_id): _version(r) for r in rows}
+
+    async def claim(self, version_id: VersionId, *, now: datetime, stale_before: datetime) -> bool:
+        claimable = or_(
+            DocumentVersionRow.status == VersionStatus.PENDING.value,
+            (DocumentVersionRow.status == VersionStatus.FAILED.value)
+            & DocumentVersionRow.error_retryable.is_(True),
+            (DocumentVersionRow.status == VersionStatus.PROCESSING.value)
+            & (DocumentVersionRow.processing_started_at < stale_before),
+        )
+        result = await self._s.execute(
+            update(DocumentVersionRow)
+            .where(*self._where(version_id), claimable)
+            .values(
+                status=VersionStatus.PROCESSING.value,
+                processing_started_at=now,
+                attempts=DocumentVersionRow.attempts + 1,
+            )
+            .returning(DocumentVersionRow.id)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def mark_indexed(
+        self,
+        version_id: VersionId,
+        *,
+        now: datetime,
+        chunk_count: int,
+        chunker_version: str,
+        embedding_model: str,
+        embedding_tokens: int,
+    ) -> None:
+        await self._s.execute(
+            update(DocumentVersionRow)
+            .where(*self._where(version_id))
+            .values(
+                status=VersionStatus.INDEXED.value,
+                indexed_at=now,
+                chunk_count=chunk_count,
+                chunker_version=chunker_version,
+                embedding_model=embedding_model,
+                embedding_tokens=embedding_tokens,
+                error_code=None,
+                error_message=None,
+                error_retryable=None,
+            )
+        )
+
+    async def mark_failed(self, version_id: VersionId, failure: IngestionFailure) -> None:
+        await self._s.execute(
+            update(DocumentVersionRow)
+            .where(*self._where(version_id))
+            .values(
+                status=VersionStatus.FAILED.value,
+                error_code=failure.code,
+                error_message=failure.message[:1000],
+                error_retryable=failure.retryable,
+            )
+        )
+
+    async def reset_to_pending(self, version_id: VersionId) -> bool:
+        result = await self._s.execute(
+            update(DocumentVersionRow)
+            .where(
+                *self._where(version_id),
+                DocumentVersionRow.status.in_(
+                    [VersionStatus.FAILED.value, VersionStatus.PENDING.value]
+                ),
+            )
+            .values(
+                status=VersionStatus.PENDING.value,
+                attempts=0,
+                error_code=None,
+                error_message=None,
+                error_retryable=None,
+            )
+            .returning(DocumentVersionRow.id)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def archive(self, version_id: VersionId, *, now: datetime) -> None:
+        await self._s.execute(
+            update(DocumentVersionRow)
+            .where(*self._where(version_id), DocumentVersionRow.archived_at.is_(None))
+            .values(archived_at=now)
+        )
+
+    async def mark_vectors_deactivated(self, version_id: VersionId, *, now: datetime) -> None:
+        await self._s.execute(
+            update(DocumentVersionRow)
+            .where(*self._where(version_id))
+            .values(vectors_deactivated_at=now)
+        )
+
+
+class _Chunks:
+    def __init__(self, session: AsyncSession, context: _Context) -> None:
+        self._s = session
+        self._ctx = context
+
+    async def add_many(self, chunks: Sequence[Chunk]) -> None:
+        if not chunks:
+            return
+        await self._s.execute(
+            insert(ChunkRow),
+            [
+                {
+                    "id": c.id,
+                    "vector_id": c.vector_id,
+                    "tenant_id": c.tenant_id,
+                    "department_id": c.department_id,
+                    "document_id": c.document_id,
+                    "document_version_id": c.version_id,
+                    "chunk_index": c.chunk_index,
+                    "text": c.text,
+                    "text_hash": c.text_hash,
+                    "heading_path": list(c.heading_path),
+                    "page_start": c.page_start,
+                    "page_end": c.page_end,
+                    "token_count": c.token_count,
+                }
+                for c in chunks
+            ],
+        )
+
+    async def count_for_version(self, version_id: VersionId) -> int:
+        count = await self._s.scalar(
+            select(func.count())
+            .select_from(ChunkRow)
+            .where(
+                ChunkRow.document_version_id == version_id,
+                ChunkRow.tenant_id == self._ctx.tenant_id,
+            )
+        )
+        return int(count or 0)

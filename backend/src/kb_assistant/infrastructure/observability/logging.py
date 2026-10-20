@@ -74,6 +74,8 @@ def configure_logging(level: str, *, json: bool = True) -> None:
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
+        # Fields passed as `logging` extras (application code uses the stdlib logger).
+        structlog.stdlib.ExtraAdder(),
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.format_exc_info,
         redact_processor,

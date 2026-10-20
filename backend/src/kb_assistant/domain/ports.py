@@ -9,13 +9,27 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
 
+from kb_assistant.domain.documents import (
+    Chunk,
+    Document,
+    DocumentVersion,
+    EmbeddingBatch,
+    IngestionFailure,
+    MimeType,
+    ParsedDocument,
+    RetrievalScope,
+    VectorMatch,
+    VectorRecord,
+)
 from kb_assistant.domain.ids import (
     DepartmentId,
+    DocumentId,
     MembershipId,
     RefreshTokenId,
     TenantId,
     TokenFamilyId,
     UserId,
+    VersionId,
 )
 from kb_assistant.domain.models import (
     AuditEvent,
@@ -139,6 +153,129 @@ class AuditLog(Protocol):
     async def record(self, event: AuditEvent) -> None: ...
 
 
+class DocumentRepository(Protocol):
+    async def add(self, document: Document) -> None: ...
+
+    async def get(self, document_id: DocumentId) -> Document | None:
+        """Within the bound tenant only."""
+        ...
+
+    async def list_in_departments(
+        self, department_ids: Sequence[DepartmentId]
+    ) -> list[Document]: ...
+
+    async def find_by_checksum(self, department_id: DepartmentId, checksum: str) -> Document | None:
+        """A document of this department whose latest usable version has this content."""
+        ...
+
+    async def set_current_version(self, document_id: DocumentId, version_id: VersionId) -> None: ...
+
+
+class VersionRepository(Protocol):
+    async def add(self, version: DocumentVersion) -> None: ...
+
+    async def get(self, version_id: VersionId) -> DocumentVersion | None: ...
+
+    async def latest(self, document_id: DocumentId) -> DocumentVersion | None: ...
+
+    async def list_for_document(self, document_id: DocumentId) -> list[DocumentVersion]: ...
+
+    async def latest_for_documents(
+        self, document_ids: Sequence[DocumentId]
+    ) -> dict[DocumentId, DocumentVersion]: ...
+
+    async def claim(self, version_id: VersionId, *, now: datetime, stale_before: datetime) -> bool:
+        """Move to `processing` if pending, failed-and-retryable, or stuck since `stale_before`.
+
+        Atomic (a conditional UPDATE), so two deliveries of the same job cannot
+        both process it.
+        """
+        ...
+
+    async def mark_indexed(
+        self,
+        version_id: VersionId,
+        *,
+        now: datetime,
+        chunk_count: int,
+        chunker_version: str,
+        embedding_model: str,
+        embedding_tokens: int,
+    ) -> None: ...
+
+    async def mark_failed(self, version_id: VersionId, failure: IngestionFailure) -> None: ...
+
+    async def reset_to_pending(self, version_id: VersionId) -> bool: ...
+
+    async def archive(self, version_id: VersionId, *, now: datetime) -> None: ...
+
+    async def mark_vectors_deactivated(self, version_id: VersionId, *, now: datetime) -> None: ...
+
+
+class ChunkRepository(Protocol):
+    async def add_many(self, chunks: Sequence[Chunk]) -> None: ...
+
+    async def count_for_version(self, version_id: VersionId) -> int: ...
+
+
+class BlobStore(Protocol):
+    """Original uploaded files (S3-compatible in every environment)."""
+
+    async def put(self, key: str, data: bytes, *, content_type: str) -> None: ...
+
+    async def get(self, key: str) -> bytes: ...
+
+
+class DocumentParser(Protocol):
+    def parse(self, data: bytes, mime_type: MimeType) -> ParsedDocument:
+        """Raise `UnreadableDocumentError` for anything that is not a valid document."""
+        ...
+
+
+class Tokenizer(Protocol):
+    """Counts tokens the way the embedding model does (ADR-0004)."""
+
+    def count(self, text: str) -> int: ...
+
+    def split(self, text: str, max_tokens: int) -> list[str]:
+        """Hard split on token boundaries, for text with no natural break."""
+        ...
+
+    def tail(self, text: str, max_tokens: int) -> str:
+        """The last max_tokens tokens of text (used for chunk overlap)."""
+        ...
+
+
+class Embedder(Protocol):
+    @property
+    def model_id(self) -> str: ...
+
+    @property
+    def dimension(self) -> int: ...
+
+    async def embed_documents(self, texts: Sequence[str]) -> EmbeddingBatch:
+        """Batches internally to respect provider limits; one vector per text, in order."""
+        ...
+
+    async def embed_query(self, text: str) -> tuple[float, ...]: ...
+
+
+class VectorStore(Protocol):
+    """ADR-0002 and ADR-0003. Never accepts a raw filter: only a `RetrievalScope`."""
+
+    async def upsert(self, records: Sequence[VectorRecord]) -> None: ...
+
+    async def deactivate_version(self, tenant_id: TenantId, version_id: VersionId) -> None: ...
+
+    async def query(
+        self, vector: Sequence[float], scope: RetrievalScope, top_k: int
+    ) -> list[VectorMatch]: ...
+
+
+class JobQueue(Protocol):
+    async def enqueue_ingestion(self, tenant_id: TenantId, version_id: VersionId) -> None: ...
+
+
 class UnitOfWork(Protocol):
     """One database transaction, with the row-level-security context bound to it.
 
@@ -167,6 +304,15 @@ class UnitOfWork(Protocol):
 
     @property
     def audit(self) -> AuditLog: ...
+
+    @property
+    def documents(self) -> DocumentRepository: ...
+
+    @property
+    def versions(self) -> VersionRepository: ...
+
+    @property
+    def chunks(self) -> ChunkRepository: ...
 
     async def bind(self, *, tenant_id: TenantId | None, user_id: UserId | None) -> None:
         """Scope the transaction to one tenant; clears any wider grant made before."""

@@ -54,3 +54,48 @@ class PolicyViolationError(DomainError):
     """Input is well-formed but breaks a business rule (e.g. a weak password)."""
 
     code = "policy_violation"
+
+
+class UnsupportedDocumentError(DomainError):
+    """Rejected at upload: not one of the four accepted formats, whatever its name says."""
+
+    code = "unsupported_document"
+
+
+class DocumentTooLargeError(DomainError):
+    code = "document_too_large"
+
+
+class IngestionError(Exception):
+    """A step of the ingestion pipeline failed.
+
+    `code` is stored on the version and shown to the admin; `retryable` says
+    whether trying again can help (a provider outage) or not (a corrupt file).
+    """
+
+    def __init__(self, code: str, message: str, *, retryable: bool) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.retryable = retryable
+
+
+class UnreadableDocumentError(IngestionError):
+    def __init__(self, message: str) -> None:
+        super().__init__("unreadable_document", message, retryable=False)
+
+
+class EmptyDocumentError(IngestionError):
+    def __init__(self) -> None:
+        super().__init__(
+            "empty_document",
+            "No text could be extracted. Scanned documents need OCR, which is not supported yet.",
+            retryable=False,
+        )
+
+
+class ProviderUnavailableError(IngestionError):
+    """An embedding provider, the vector store or object storage did not answer in time."""
+
+    def __init__(self, provider: str, message: str) -> None:
+        super().__init__(f"{provider}_unavailable", message, retryable=True)

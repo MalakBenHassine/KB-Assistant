@@ -9,7 +9,7 @@ from kb_assistant.api.app import create_app
 from kb_assistant.api.deps import public_endpoint
 from kb_assistant.bootstrap import Container, build_container
 from kb_assistant.infrastructure.security.jwt import SigningKeys
-from kb_assistant.settings import RedisSettings
+from kb_assistant.settings import RedisSettings, StorageSettings
 from tests.conftest import Database, make_settings
 from tests.support import fast_hasher
 
@@ -27,9 +27,9 @@ async def test_readiness_checks_dependencies(client: httpx.AsyncClient) -> None:
 
 
 async def test_readiness_reports_unavailable_without_leaking_details(
-    database: Database, signing_keys: SigningKeys
+    database: Database, signing_keys: SigningKeys, storage_settings: StorageSettings
 ) -> None:
-    settings = make_settings(database, "redis://127.0.0.1:1/0")
+    settings = make_settings(database, "redis://127.0.0.1:1/0", storage_settings)
     settings = settings.model_copy(
         update={
             "redis": RedisSettings(url=SecretStr("redis://127.0.0.1:1/0"), socket_timeout_s=0.2)

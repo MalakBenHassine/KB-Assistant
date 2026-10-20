@@ -10,7 +10,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,6 +55,59 @@ class AuthSettings(BaseModel):
         return timedelta(seconds=self.invitation_ttl_s)
 
 
+class StorageSettings(BaseModel):
+    """S3-compatible object storage for uploaded originals."""
+
+    bucket: str = "kb-documents"
+    endpoint_url: str | None = None  # None means AWS S3
+    access_key: SecretStr
+    secret_key: SecretStr
+    region: str = "us-east-1"
+    timeout_s: float = Field(default=10.0, gt=0)
+    create_bucket: bool = False  # local and test only
+
+
+class EmbeddingSettings(BaseModel):
+    # `hashing` runs offline with no key (tests, CI, demo); `openai` is the real model.
+    provider: Literal["hashing", "openai"] = "hashing"
+    model: str = "text-embedding-3-small"
+    dimension: int = Field(default=1536, gt=0)
+    api_key: SecretStr | None = None
+    timeout_s: float = Field(default=30.0, gt=0)
+    batch_max_inputs: int = Field(default=256, ge=1, le=2_048)
+    batch_max_tokens: int = Field(default=250_000, ge=1, le=300_000)
+
+    @model_validator(mode="after")
+    def _key_for_hosted_models(self) -> "EmbeddingSettings":
+        if self.provider == "openai" and not (self.api_key and self.api_key.get_secret_value()):
+            raise ValueError("embeddings.api_key is required when provider is openai")
+        return self
+
+
+class VectorStoreSettings(BaseModel):
+    provider: Literal["pgvector", "pinecone"] = "pgvector"
+    pinecone_api_key: SecretStr | None = None
+    pinecone_index_host: str | None = None
+    timeout_s: float = Field(default=10.0, gt=0)
+
+    @model_validator(mode="after")
+    def _pinecone_needs_credentials(self) -> "VectorStoreSettings":
+        if self.provider == "pinecone" and not (self.pinecone_api_key and self.pinecone_index_host):
+            raise ValueError("pinecone_api_key and pinecone_index_host are required for pinecone")
+        return self
+
+
+class IngestionSettings(BaseModel):
+    """Chunking values are placeholders until Phase 4 calibrates them (ADR-0004)."""
+
+    max_upload_mib: int = Field(default=20, ge=1, le=200)
+    chunk_max_tokens: int = Field(default=512, ge=64, le=8_000)
+    chunk_overlap_tokens: int = Field(default=64, ge=0)
+    chunk_min_tokens: int = Field(default=50, ge=0)
+    max_attempts: int = Field(default=3, ge=1, le=10)
+    stale_after_s: int = Field(default=600, ge=60)
+
+
 class _ProcessSettings(BaseSettings):
     """What every process needs: the API, the worker and the CLI."""
 
@@ -69,6 +122,10 @@ class _ProcessSettings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     database: DatabaseSettings
     redis: RedisSettings
+    storage: StorageSettings
+    embeddings: EmbeddingSettings = EmbeddingSettings()
+    vector_store: VectorStoreSettings = VectorStoreSettings()
+    ingestion: IngestionSettings = IngestionSettings()
 
 
 class WorkerSettings(_ProcessSettings):

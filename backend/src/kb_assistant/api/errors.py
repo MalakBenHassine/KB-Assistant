@@ -16,12 +16,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from kb_assistant.domain.errors import (
     ConflictError,
+    DocumentTooLargeError,
     DomainError,
     ForbiddenError,
     InvalidInvitationError,
     NotAuthenticatedError,
     NotFoundError,
     PolicyViolationError,
+    UnsupportedDocumentError,
 )
 
 PROBLEM_MEDIA_TYPE = "application/problem+json"
@@ -33,6 +35,8 @@ _STATUS_BY_ERROR: tuple[tuple[type[DomainError], int], ...] = (
     (ConflictError, 409),
     (InvalidInvitationError, 400),
     (PolicyViolationError, 422),
+    (DocumentTooLargeError, 413),
+    (UnsupportedDocumentError, 415),
 )
 
 log = structlog.get_logger(__name__)

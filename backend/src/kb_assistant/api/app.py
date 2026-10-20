@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from kb_assistant.api.errors import install_error_handlers
 from kb_assistant.api.middleware import RequestContextMiddleware
-from kb_assistant.api.routers import auth, health, jwks, tenancy
+from kb_assistant.api.routers import auth, documents, health, jwks, tenancy
 from kb_assistant.bootstrap import Container, build_container, configure_runtime
 from kb_assistant.settings import Settings
 
@@ -21,6 +21,7 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await resolved.start()
         yield
         await resolved.aclose()
 
@@ -42,4 +43,5 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
     app.include_router(auth.public)
     app.include_router(auth.router)
     app.include_router(tenancy.router)
+    app.include_router(documents.router)
     return app

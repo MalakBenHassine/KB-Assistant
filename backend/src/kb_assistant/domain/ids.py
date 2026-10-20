@@ -17,6 +17,9 @@ DepartmentId = NewType("DepartmentId", UUID)
 InvitationId = NewType("InvitationId", UUID)
 RefreshTokenId = NewType("RefreshTokenId", UUID)
 TokenFamilyId = NewType("TokenFamilyId", UUID)
+DocumentId = NewType("DocumentId", UUID)
+VersionId = NewType("VersionId", UUID)
+ChunkId = NewType("ChunkId", UUID)
 
 
 def new_id() -> UUID:
