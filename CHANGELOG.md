@@ -7,6 +7,13 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Question answering: a LangGraph workflow (classify, rewrite, retrieve within
+  the caller's scope, grade, bounded retry, rerank, generate, validate citations,
+  clarify or abstain), sentence-level citation checking, nonce-delimited sources,
+  SSE streaming, conversations and messages that record retrieved and cited
+  chunks, scores, model, prompt version, thresholds and latency; audit entry per
+  question. OpenAI Responses API adapter with a circuit breaker, offline
+  extractive model, Pinecone reranker.
 - Document ingestion: upload with content-based type detection and size
   limits, PDF/DOCX/Markdown/HTML parsing, text cleaning (invisible characters,
   prompt-delimiter neutralisation, running headers and footers), structure-aware

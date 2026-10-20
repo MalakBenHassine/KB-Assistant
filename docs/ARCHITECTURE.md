@@ -283,7 +283,31 @@ sequenceDiagram
   number of cited sources. A calibrated score may be added in Phase 4 only if the
   eval set shows it actually predicts correctness.
 
-### 5.5 Thresholds
+### 5.5 Streaming protocol
+
+`POST /v1/conversations/{id}/messages` answers with server-sent events when the
+client sends `Accept: text/event-stream`, and with the final JSON otherwise.
+Authorization and validation run before the first byte, so a 403 or a 404 is
+an ordinary problem response, never a stream that dies after its headers.
+
+| Event | Payload |
+|-------|---------|
+| `meta` | `message_id`, `request_id` |
+| `status` | `stage`: `retrieving`, then `generating` |
+| `sentence` | one validated sentence and the aliases it cites |
+| `message` | a refusal, a clarification request or an "I don't know" |
+| `done` | the answer, resolved citations (document, heading path, pages), `abstained`, `abstain_reason`, `grade`, `latency_ms` |
+
+### 5.6 Offline mode
+
+Two adapters let the whole system run without a paid key: the hashing
+embedder (ADR-0006) and an *extractive* chat model that quotes, for the best
+sources, the sentence sharing the most words with the question, with its
+citation. It cannot invent a fact; it also cannot paraphrase or combine
+sources. It is the default in compose and CI; `KB_LLM_PROVIDER=openai` switches
+to the Responses API (`gpt-5.6-terra` by default, configurable).
+
+### 5.7 Thresholds
 
 `retrieval.min_score`, `retrieval.top_k`, `retrieval.rerank_top_n` and
 `graph.max_retries` live in configuration with **uncalibrated placeholder values**
@@ -434,7 +458,8 @@ acceptable here. Authorization never relies on IDs being hard to guess.
 | `POST /v1/memberships` (invite) | `tenant_admin` | No open self-registration into a tenant |
 | `GET /v1/me` | any | Active tenant, role, departments, list of other memberships |
 | `POST /v1/conversations` · `GET /v1/conversations` | any | Own conversations only |
-| `POST /v1/conversations/{id}/messages` | any | SSE stream |
+| `GET /v1/conversations/{id}/messages` | any | History with citations |
+| `POST /v1/conversations/{id}/messages` | any | SSE stream or JSON (§5.5); optional `department_ids` narrows the search |
 | `POST /v1/messages/{id}/feedback` | any | Own messages only |
 | `POST /v1/documents` · `POST /v1/documents/{id}/versions` · `GET /v1/documents` | `dept_admin`+ | Scoped to managed departments |
 | `GET /v1/admin/analytics/*` | `tenant_admin`, `dept_admin` (own departments) | |

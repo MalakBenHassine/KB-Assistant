@@ -8,9 +8,9 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 2 of 7 done. Multi-tenant identity, authorization, the
-delivery pipeline and document ingestion are in place; retrieval and the
-LangGraph workflow are next.
+**Status:** Phase 3 of 7 done. Employees can ask questions and get answers
+streamed sentence by sentence, each sentence cited, drawn only from what they
+may read. Evaluation and threshold calibration are next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -50,6 +50,16 @@ LangGraph workflow are next.
   is idempotent, a new version archives the old one without deleting it, and
   Postgres stays the source of truth over the vector index
   ([ADR-0015](docs/adr/0015-ingestion-consistency-and-object-storage.md)).
+- **Isolation proven at the retrieval layer.** The isolation tests run the real
+  workflow against a vector store that *leaks on purpose* (it ignores the scope
+  and returns every tenant's vectors) and assert on the prompt sent to the
+  model: Postgres re-checks tenant, department and current version before any
+  chunk is used, for every combination of departments.
+- **An explicit, bounded workflow.** A LangGraph state machine classifies the
+  question, rewrites it, retrieves within the caller's scope, grades the
+  evidence, retries once, then answers with citations, asks for clarification
+  or says it doesn't know. Every sentence must cite a retrieved source or it is
+  dropped before the user sees it.
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
   stand in for Pinecone and OpenAI, behind the same ports and contract tests.
 
@@ -64,7 +74,13 @@ make seed    # two companies (Acme, Globex), three departments each, seven users
 
 Then open the API documentation at http://127.0.0.1:8000/docs, sign in, and
 upload a document with `POST /v1/documents`; its status moves from `pending`
-to `indexed` within seconds. Every demo user
+to `indexed` within seconds. Then create a conversation and ask:
+
+```bash
+curl -N http://127.0.0.1:8000/v1/conversations/$CONVERSATION/messages \
+  -H "Authorization: Bearer $TOKEN" -H 'Accept: text/event-stream' \
+  -H 'content-type: application/json' -d '{"question": "How many days of leave do I get?"}'
+``` Every demo user
 has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
 
 | User | Company | Role | Departments |
@@ -104,8 +120,8 @@ as in production.
 
 Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · PostgreSQL
 with row-level security · Redis · Celery · Next.js 16 · TypeScript · Tailwind ·
-Docker · GitHub Actions · cosign · Trivy · CodeQL. Coming next: LangGraph,
-Pinecone (pgvector locally), OpenAI, OpenTelemetry, Prometheus, Grafana, Helm.
+Docker · GitHub Actions · cosign · Trivy · CodeQL · LangGraph · Pinecone (pgvector
+locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana, Helm.
 
 ## Roadmap
 
@@ -114,8 +130,8 @@ Pinecone (pgvector locally), OpenAI, OpenTelemetry, Prometheus, Grafana, Helm.
 | 0 | Design: architecture, ADRs, threat model | Done |
 | 1 | Foundations: auth, tenancy, RLS, compose stack, CI/CD | Done |
 | 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Done |
-| 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Next |
-| 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | — |
+| 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Done |
+| 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Next |
 | 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | — |
 | 6 | Frontend: chat with citations, document management, dashboard | — |
 | 7 | Production readiness: Helm, tracing, dashboards, load test | — |

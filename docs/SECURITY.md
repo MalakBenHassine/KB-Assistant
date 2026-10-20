@@ -88,7 +88,11 @@ answer quotes a chunk from an archived version the user should no longer see.
   issue a request that spans two tenants, and switching tenant mints a new
   token pair through an audited endpoint.
 
-*Tests that prove it.*
+*Tests that prove it* (implemented: `tests/integration/test_retrieval_isolation.py`,
+`tests/unit/test_answer_graph.py`, `tests/unit/test_pinecone_adapter.py`). The
+central one runs the real workflow against a deliberately *leaky* vector store
+that ignores the scope and returns every vector of every tenant, then asserts
+that no foreign text reached the prompt, for every combination of departments.
 - `test_retrieval_call_uses_tenant_namespace_and_department_filter`: spy on the
   vector-store port and assert the exact namespace and filter, **on the call**,
   not on the answer.
