@@ -40,7 +40,9 @@ Until `VERCEL_PROJECT_ID` exists, the deploy job is skipped, not failed.
 
 Every image on GHCR is signed by the CD workflow, from `main`, through GitHub's
 OIDC identity. Anyone can check that an image was built by this repository's
-pipeline and not pushed by hand:
+pipeline and not pushed by hand. Use cosign 3 or later: signatures are stored
+in the Sigstore bundle format, which cosign 2 does not look for (it reports
+"no signatures found").
 
 ```bash
 cosign verify ghcr.io/malakbenhassine/kb-assistant-backend:main \
