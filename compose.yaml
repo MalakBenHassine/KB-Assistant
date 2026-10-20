@@ -21,6 +21,10 @@ x-backend: &backend
     # for real embeddings.
     KB_EMBEDDINGS__PROVIDER: ${KB_EMBEDDINGS_PROVIDER:-hashing}
     KB_EMBEDDINGS__API_KEY: ${OPENAI_API_KEY:-}
+    # `extractive` answers offline by quoting sources; `openai` uses KB_LLM_MODEL.
+    KB_LLM__PROVIDER: ${KB_LLM_PROVIDER:-extractive}
+    KB_LLM__MODEL: ${KB_LLM_MODEL:-gpt-5.6-terra}
+    KB_LLM__API_KEY: ${OPENAI_API_KEY:-}
   restart: unless-stopped
 
 services:

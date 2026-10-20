@@ -149,11 +149,22 @@ jobs:
             status=$(curl -sf "http://127.0.0.1:8000/v1/documents/${document}" -H "${auth}" \
               | jq -r .latest_version.status)
             echo "status: ${status}"
-            [ "${status}" = "indexed" ] && exit 0
+            [ "${status}" = "indexed" ] && break
             [ "${status}" = "failed" ] && exit 1
             sleep 2
           done
-          exit 1
+          [ "${status}" = "indexed" ] || exit 1
+          echo "document=${document}" >> "${GITHUB_ENV}"
+      - name: Ask a question and get a cited answer
+        run: |
+          auth="Authorization: Bearer ${token}"
+          conversation=$(curl -sf http://127.0.0.1:8000/v1/conversations -H "${auth}" \
+            -H 'content-type: application/json' -d '{}' | jq -r .id)
+          curl -sf "http://127.0.0.1:8000/v1/conversations/${conversation}/messages" \
+            -H "${auth}" -H 'content-type: application/json' \
+            -d '{"question": "How many days of paid leave do employees get?"}' \
+            | tee answer.json \
+            | jq -e '.abstained == false and (.citations | length) > 0'
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color
