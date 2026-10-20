@@ -13,11 +13,19 @@ x-backend: &backend
     KB_ENVIRONMENT: local
     KB_DATABASE__URL: postgresql+asyncpg://kb_app:${KB_APP_DB_PASSWORD:?}@postgres:5432/kb
     KB_REDIS__URL: redis://:${REDIS_PASSWORD:?}@redis:6379/0
+    KB_STORAGE__ENDPOINT_URL: http://s3:8333
+    KB_STORAGE__BUCKET: kb-documents
+    KB_STORAGE__ACCESS_KEY: ${S3_ACCESS_KEY:?}
+    KB_STORAGE__SECRET_KEY: ${S3_SECRET_KEY:?}
+    # `hashing` works offline; set KB_EMBEDDINGS_PROVIDER=openai and OPENAI_API_KEY in .env
+    # for real embeddings.
+    KB_EMBEDDINGS__PROVIDER: ${KB_EMBEDDINGS_PROVIDER:-hashing}
+    KB_EMBEDDINGS__API_KEY: ${OPENAI_API_KEY:-}
   restart: unless-stopped
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:0.8.7-pg17
     environment:
       POSTGRES_USER: kb_owner
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -46,6 +54,22 @@ services:
       timeout: 3s
       retries: 20
 
+  s3:
+    # S3-compatible storage for uploaded originals. MinIO stopped publishing
+    # community images in 2025 (ADR-0015); production uses a managed S3.
+    image: chrislusf/seaweedfs:4.48
+    command: ["server", "-s3", "-dir=/data"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?}
+    volumes:
+      - s3-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   migrate:
     <<: *backend
     command: ["alembic", "upgrade", "head"]
@@ -65,6 +89,7 @@ services:
       <<: *backend-env
       KB_AUTH__PRIVATE_KEY_FILE: /run/secrets/jwt_signing_key
       KB_AUTH__KEY_ID: local-dev
+      KB_STORAGE__CREATE_BUCKET: "true"
     secrets:
       - jwt_signing_key
     ports:
@@ -73,6 +98,8 @@ services:
       migrate:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      s3:
         condition: service_healthy
 
   worker:
@@ -88,6 +115,8 @@ services:
       migrate:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      s3:
         condition: service_healthy
 
   web:
@@ -123,3 +152,4 @@ secrets:
 volumes:
   postgres-data:
   redis-data:
+  s3-data:

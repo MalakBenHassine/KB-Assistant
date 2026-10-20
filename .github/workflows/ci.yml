@@ -136,6 +136,24 @@ jobs:
             | jq -r .access_token)
           curl -sf http://127.0.0.1:8000/v1/me -H "Authorization: Bearer ${token}" | jq -e '.role == "tenant_admin"'
           curl -sf http://127.0.0.1:3000/api/health | jq -e '.status == "ok"'
+          echo "token=${token}" >> "${GITHUB_ENV}"
+      - name: Upload a document and wait until the worker has indexed it
+        run: |
+          auth="Authorization: Bearer ${token}"
+          hr=$(curl -sf http://127.0.0.1:8000/v1/departments -H "${auth}" \
+            | jq -r '.items[] | select(.slug == "hr") | .id')
+          printf '# Leave policy\n\nEmployees get 25 days of paid leave per year.\n' > leave.md
+          document=$(curl -sf http://127.0.0.1:8000/v1/documents -H "${auth}" \
+            -F "department_id=${hr}" -F "file=@leave.md;type=text/markdown" | jq -r .id)
+          for _ in $(seq 1 30); do
+            status=$(curl -sf "http://127.0.0.1:8000/v1/documents/${document}" -H "${auth}" \
+              | jq -r .latest_version.status)
+            echo "status: ${status}"
+            [ "${status}" = "indexed" ] && exit 0
+            [ "${status}" = "failed" ] && exit 1
+            sleep 2
+          done
+          exit 1
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color

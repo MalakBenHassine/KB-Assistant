@@ -20,15 +20,21 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
+# Fetch the tokenizer's encoding at build time: no process needs the network
+# at runtime to count tokens.
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken
+RUN /opt/venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
 FROM ${PYTHON_IMAGE} AS runtime
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 COPY --from=build /opt/venv /opt/venv
+COPY --from=build /opt/tiktoken /opt/tiktoken
 WORKDIR /app
 COPY alembic.ini ./
 COPY migrations ./migrations
 ENV PATH=/opt/venv/bin:$PATH \
+    TIKTOKEN_CACHE_DIR=/opt/tiktoken \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 USER 10001:10001

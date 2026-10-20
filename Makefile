@@ -18,6 +18,8 @@ help: ## List the targets
 	  echo "POSTGRES_PASSWORD=$$(openssl rand -hex 24)"; \
 	  echo "KB_APP_DB_PASSWORD=$$(openssl rand -hex 24)"; \
 	  echo "REDIS_PASSWORD=$$(openssl rand -hex 24)"; \
+	  echo "S3_ACCESS_KEY=kb-$$(openssl rand -hex 8)"; \
+	  echo "S3_SECRET_KEY=$$(openssl rand -hex 24)"; \
 	  echo "KB_SEED_PASSWORD=demo-$$(openssl rand -hex 8)"; \
 	  echo "KB_UID=$$(id -u)"; \
 	  echo "KB_GID=$$(id -g)"; \
