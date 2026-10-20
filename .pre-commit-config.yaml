@@ -1,0 +1,40 @@
+# Fast checks only (a few seconds). Tests and type checking run in CI.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      # Run through uv so the hook uses the exact versions pinned in uv.lock.
+      - id: ruff-format
+        name: ruff format
+        entry: bash -c 'cd backend && uv run ruff format --check .'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: bash -c 'cd backend && uv run ruff check .'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd web && npx prettier --check .'
+        language: system
+        files: ^web/
+        pass_filenames: false
