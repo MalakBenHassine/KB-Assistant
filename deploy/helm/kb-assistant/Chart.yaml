@@ -1,0 +1,13 @@
+apiVersion: v2
+name: kb-assistant
+description: >-
+  Multi-tenant knowledge-base assistant: API, ingestion worker, web app,
+  migrations and maintenance jobs. PostgreSQL (with pgvector), Redis and S3 are
+  external services (docs/DEPLOYMENT.md).
+type: application
+version: 0.1.0
+appVersion: "main"
+kubeVersion: ">=1.30.0-0"
+home: https://github.com/MalakBenHassine/KB-Assistant
+sources:
+  - https://github.com/MalakBenHassine/KB-Assistant

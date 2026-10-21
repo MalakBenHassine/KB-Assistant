@@ -1,0 +1,116 @@
+# Values for the kb-assistant chart. Every value is documented here; the
+# schema (values.schema.json) rejects unknown keys and wrong types.
+
+images:
+  backend:
+    repository: ghcr.io/malakbenhassine/kb-assistant-backend
+    tag: main
+    # Prefer a digest in production: a tag can move, a digest cannot.
+    digest: ""
+  web:
+    repository: ghcr.io/malakbenhassine/kb-assistant-web
+    tag: main
+    digest: ""
+  pullPolicy: IfNotPresent
+
+# Secrets are never in values. Create them out of band (kubectl, Sealed Secrets,
+# External Secrets). Keys expected in `secrets.backend`:
+#   KB_DATABASE__URL            postgresql+asyncpg://kb_app:...@host:5432/kb (application role)
+#   KB_DATABASE__MIGRATION_URL  postgresql+asyncpg://kb_owner:...@host:5432/kb (owner, jobs only)
+#   KB_REDIS__URL               rediss://:...@host:6379/0
+#   KB_STORAGE__ACCESS_KEY, KB_STORAGE__SECRET_KEY
+#   OPENAI_API_KEY              (when a provider is `openai`)
+#   KB_VECTOR_STORE__PINECONE_API_KEY (when the vector store is `pinecone`)
+# `secrets.signingKey` holds `jwt_signing_key.pem` (python -m kb_assistant.cli generate-signing-key).
+secrets:
+  backend: kb-assistant-backend
+  signingKey: kb-assistant-signing-key
+
+# Non-secret configuration, as KB_* variables (backend/src/kb_assistant/settings.py).
+config:
+  KB_ENVIRONMENT: production
+  KB_LOG_LEVEL: INFO
+  KB_AUTH__KEY_ID: prod-1
+  KB_STORAGE__BUCKET: kb-documents
+  KB_STORAGE__ENDPOINT_URL: ""
+  KB_STORAGE__REGION: eu-central-1
+  KB_EMBEDDINGS__PROVIDER: openai
+  KB_LLM__PROVIDER: openai
+  KB_LLM__MODEL: gpt-5.6-terra
+  KB_VECTOR_STORE__PROVIDER: pgvector
+  KB_VECTOR_STORE__PINECONE_INDEX_HOST: ""
+  # Recalibrate for the embedding model in use: `KB_EVAL_PROFILE=openai make eval`.
+  KB_RETRIEVAL__MIN_SCORE: "0.07"
+  KB_LIMITS__DEFAULT_MONTHLY_TOKEN_BUDGET: "5000000"
+
+# OpenTelemetry: traces are exported when an endpoint is set.
+tracing:
+  otlpEndpoint: ""
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 250m, memory: 384Mi }
+    limits: { memory: 768Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+worker:
+  replicas: 1
+  concurrency: 2
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+web:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { memory: 384Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+
+# Only the web app is published. The API is reached by the web app inside the
+# cluster (ADR-0008) and never routed by the ingress.
+ingress:
+  enabled: true
+  className: traefik # k3s ships Traefik
+  host: kb.example.com
+  tlsSecretName: kb-assistant-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+
+migrations:
+  # A Helm hook runs `alembic upgrade head` before install and upgrade.
+  enabled: true
+
+maintenance:
+  retention:
+    enabled: true
+    schedule: "17 3 * * *"
+    olderThanDays: 365
+  auditHeads:
+    # Log lines `{"event": "audit.head", ...}`; ship them to write-once storage (ADR-0019).
+    enabled: true
+    schedule: "7 * * * *"
+
+networkPolicy:
+  enabled: true
+  # Where the ingress controller and Prometheus run (k3s: Traefik in kube-system).
+  ingressControllerNamespace: kube-system
+  monitoringNamespace: monitoring
+  # Egress for the backend: PostgreSQL, Redis, and HTTPS (S3, model and vector providers).
+  egressPorts: [5432, 6379, 443]
+
+monitoring:
+  # Requires the Prometheus Operator CRDs (kube-prometheus-stack).
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false

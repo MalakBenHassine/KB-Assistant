@@ -1,0 +1,109 @@
+{{- /*
+Jobs that need the schema owner: migrations (a Helm hook, before the new
+pods start) and the scheduled maintenance. They read only the backend secret,
+never the ConfigMap, which does not exist yet before the first install.
+*/ -}}
+{{- define "kb.ownerJobPod" -}}
+{{- /* The default service account: the migration hook runs before this chart's exists. */ -}}
+{{- include "kb.podSecurity" (dict "uid" 10001) | nindent 0 }}
+restartPolicy: Never
+containers:
+  - name: {{ .name }}
+    image: {{ include "kb.image" .root.Values.images.backend }}
+    imagePullPolicy: {{ .root.Values.images.pullPolicy }}
+    command: {{- toJson .command | nindent 6 }}
+    {{- include "kb.containerSecurity" .root | nindent 4 }}
+    env:
+      - name: KB_DATABASE__MIGRATION_URL
+        valueFrom:
+          secretKeyRef:
+            name: {{ .root.Values.secrets.backend }}
+            key: KB_DATABASE__MIGRATION_URL
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+    volumeMounts:
+      - { name: tmp, mountPath: /tmp }
+volumes:
+  - name: tmp
+    emptyDir: {}
+{{- end -}}
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "kb.fullname" . }}-migrate
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "kb.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      {{- include "kb.ownerJobPod" (dict "root" . "name" "migrate" "command" (list "alembic" "upgrade" "head")) | nindent 6 }}
+{{- end }}
+{{- with .Values.maintenance.retention }}
+{{- if .enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "kb.fullname" $ }}-retention
+  labels:
+    {{- include "kb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: maintenance
+spec:
+  schedule: {{ .schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "kb.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: maintenance
+        spec:
+          {{- $cmd := list "python" "-m" "kb_assistant.cli" "purge-expired-messages" "--older-than-days" (toString .olderThanDays) }}
+          {{- include "kb.ownerJobPod" (dict "root" $ "name" "retention" "command" $cmd) | nindent 10 }}
+{{- end }}
+{{- end }}
+{{- with .Values.maintenance.auditHeads }}
+{{- if .enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "kb.fullname" $ }}-audit-heads
+  labels:
+    {{- include "kb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: maintenance
+spec:
+  schedule: {{ .schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "kb.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: maintenance
+        spec:
+          {{- $cmd := list "python" "-m" "kb_assistant.cli" "audit-heads" }}
+          {{- include "kb.ownerJobPod" (dict "root" $ "name" "audit-heads" "command" $cmd) | nindent 10 }}
+{{- end }}
+{{- end }}

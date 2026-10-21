@@ -1,0 +1,12 @@
+KB Assistant {{ .Chart.AppVersion }} is installed as "{{ .Release.Name }}".
+
+{{- if .Values.ingress.enabled }}
+Web app: https://{{ .Values.ingress.host }}
+{{- end }}
+The API is internal: http://{{ include "kb.fullname" . }}-api:8000 (not routed by the ingress).
+
+Before the first install, create:
+  - secret {{ .Values.secrets.backend }} with the KB_* keys listed in values.yaml;
+  - secret {{ .Values.secrets.signingKey }} with jwt_signing_key.pem;
+  - the database role used by KB_DATABASE__URL (non-owner, no BYPASSRLS).
+See docs/DEPLOYMENT.md.

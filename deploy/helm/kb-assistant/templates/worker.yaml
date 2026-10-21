@@ -1,0 +1,77 @@
+{{- $component := dict "root" . "component" "worker" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kb.fullname" . }}-worker
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels: {{- include "kb.selector" $component | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kb.selector" $component | nindent 8 }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "kb.fullname" . }}
+      {{- include "kb.podSecurity" (dict "uid" 10001) | nindent 6 }}
+      # Ingestion tasks are acknowledged late: give a task time to finish.
+      terminationGracePeriodSeconds: 360
+      containers:
+        - name: worker
+          image: {{ include "kb.image" .Values.images.backend }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command:
+            - celery
+            - -A
+            - kb_assistant.worker.app
+            - worker
+            - --loglevel=INFO
+            - --concurrency={{ .Values.worker.concurrency }}
+          {{- include "kb.containerSecurity" . | nindent 10 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "kb.fullname" . }}-config
+            - secretRef:
+                name: {{ .Values.secrets.backend }}
+          env:
+            # Forked children write samples here; the parent serves them on :9100.
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: /var/run/prometheus
+            {{- if .Values.tracing.otlpEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.tracing.otlpEndpoint | quote }}
+            {{- end }}
+          ports:
+            - { name: metrics, containerPort: 9100 }
+          livenessProbe:
+            exec:
+              command: [sh, -c, "celery -A kb_assistant.worker.app inspect ping -d celery@$HOSTNAME --timeout 10"]
+            periodSeconds: 60
+            timeoutSeconds: 20
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: metrics, mountPath: /var/run/prometheus }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: metrics
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kb.fullname" . }}-worker-metrics
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  selector: {{- include "kb.selector" $component | nindent 4 }}
+  ports:
+    - { name: metrics, port: 9100, targetPort: metrics }

@@ -1,0 +1,121 @@
+{{- $component := dict "root" . "component" "web" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kb.fullname" . }}-web
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicas }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "kb.selector" $component | nindent 6 }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels:
+        {{- include "kb.selector" $component | nindent 8 }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    spec:
+      serviceAccountName: {{ include "kb.fullname" . }}
+      {{- include "kb.podSecurity" (dict "uid" 1000) | nindent 6 }}
+      containers:
+        - name: web
+          image: {{ include "kb.image" .Values.images.web }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          {{- include "kb.containerSecurity" . | nindent 10 }}
+          env:
+            # Server-side only: the browser never learns where the API is (ADR-0008).
+            - name: KB_API_URL
+              value: http://{{ include "kb.fullname" . }}-api:8000
+          ports:
+            - { name: http, containerPort: 3000 }
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 20
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: next-cache, mountPath: /app/.next/cache }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kb.fullname" . }}-web
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  selector: {{- include "kb.selector" $component | nindent 4 }}
+  ports:
+    - { name: http, port: 3000, targetPort: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "kb.fullname" . }}-web
+  labels: {{- include "kb.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {{- include "kb.selector" $component | nindent 6 }}
+{{- if .Values.web.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "kb.fullname" . }}-web
+  labels: {{- include "kb.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "kb.fullname" . }}-web
+  minReplicas: {{ .Values.web.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.web.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.web.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "kb.fullname" . }}
+  labels: {{- include "kb.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # The web app only. The API, /metrics included, is not routed.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "kb.fullname" . }}-web
+                port: { name: http }
+{{- end }}

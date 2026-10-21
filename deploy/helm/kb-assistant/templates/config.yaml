@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "kb.fullname" . }}
+  labels: {{- include "kb.labels" . | nindent 4 }}
+# No workload talks to the Kubernetes API.
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kb.fullname" . }}-config
+  labels: {{- include "kb.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.config }}
+  {{- if ne (toString $value) "" }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}
+  {{- end }}

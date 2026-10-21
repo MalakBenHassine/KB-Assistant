@@ -1,0 +1,91 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kb.fullname" . }}
+  labels: {{- include "kb.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+    # The API and the worker expose metrics; the web app does not.
+    matchExpressions:
+      - { key: app.kubernetes.io/component, operator: In, values: [api, worker] }
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+    - port: metrics
+      path: /metrics
+      interval: 30s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kb.fullname" . }}-dashboard
+  labels:
+    {{- include "kb.labels" . | nindent 4 }}
+    # Picked up by the Grafana sidecar of kube-prometheus-stack.
+    grafana_dashboard: "1"
+data:
+  kb-assistant.json: |-
+    {{- .Files.Get "dashboards/kb-assistant.json" | nindent 4 }}
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "kb.fullname" . }}
+  labels: {{- include "kb.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: kb-assistant
+      rules:
+        - alert: KBApiErrorRate
+          expr: |
+            sum(rate(kb_http_requests_total{status=~"5.."}[5m]))
+              / clamp_min(sum(rate(kb_http_requests_total[5m])), 1e-9) > 0.05
+          for: 10m
+          labels: { severity: page }
+          annotations:
+            summary: More than 5 % of API requests fail.
+            runbook: docs/RUNBOOK.md#api-errors
+        - alert: KBAnswerLatencyHigh
+          expr: |
+            histogram_quantile(0.95, sum(rate(kb_answer_duration_seconds_bucket[10m])) by (le)) > 20
+          for: 15m
+          labels: { severity: ticket }
+          annotations:
+            summary: The 95th percentile answer takes more than 20 s.
+            runbook: docs/RUNBOOK.md#slow-answers
+        - alert: KBAbstentionSpike
+          expr: |
+            sum(rate(kb_answers_total{outcome="abstained"}[30m]))
+              / clamp_min(sum(rate(kb_answers_total[30m])), 1e-9) > 0.5
+          for: 30m
+          labels: { severity: ticket }
+          annotations:
+            summary: More than half of the questions get no answer.
+            description: Retrieval may be broken (embedding model change, empty index) or a knowledge gap opened.
+            runbook: docs/RUNBOOK.md#abstention-spike
+        - alert: KBAssistantUnavailable
+          expr: increase(kb_abstentions_total{reason="assistant_unavailable"}[10m]) > 5
+          labels: { severity: page }
+          annotations:
+            summary: The language model is failing; users see "temporarily unavailable".
+            runbook: docs/RUNBOOK.md#model-outage
+        - alert: KBIngestionFailures
+          expr: increase(kb_ingestions_total{status="failed"}[30m]) > 3
+          labels: { severity: ticket }
+          annotations:
+            summary: Documents are failing to index.
+            runbook: docs/RUNBOOK.md#ingestion-failures
+        - alert: KBHydrationRejections
+          expr: increase(kb_authz_hydration_rejections_total[1h]) > 50
+          labels: { severity: ticket }
+          annotations:
+            summary: Many vector hits were refused by the Postgres re-check.
+            description: Expected right after re-indexing (archived versions); otherwise the vector index disagrees with Postgres.
+            runbook: docs/RUNBOOK.md#hydration-rejections
+{{- end }}
