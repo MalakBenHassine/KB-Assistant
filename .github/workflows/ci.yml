@@ -56,6 +56,35 @@ jobs:
             backend/junit.xml
           retention-days: 14
 
+  evaluation:
+    name: Evaluation (quality gate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.12.15"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      # Offline profile: deterministic and free. Gate limits: eval/gate.toml.
+      - name: Run the evaluation set through the real pipeline and apply the gate
+        run: uv run pytest -m eval -q
+        env:
+          KB_EVAL_REPORT_DIR: ${{ runner.temp }}/eval-reports
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: evaluation-report
+          path: ${{ runner.temp }}/eval-reports
+          retention-days: 30
+
   web:
     name: Web (lint, types, build)
     runs-on: ubuntu-24.04
@@ -84,7 +113,7 @@ jobs:
 
   images:
     name: Image ${{ matrix.image }} (build and scan)
-    needs: [backend, web]
+    needs: [backend, evaluation, web]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:

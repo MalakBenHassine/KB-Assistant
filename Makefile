@@ -80,5 +80,9 @@ test: ## Run every test (needs Docker for testcontainers)
 	$(BACKEND) uv run pytest --cov --cov-report=term
 	$(BACKEND) uv run coverage report --include="src/kb_assistant/domain/*,src/kb_assistant/application/*" --fail-under=80
 
+.PHONY: eval
+eval: ## Run the evaluation and its quality gate; reports in eval/reports (KB_EVAL_PROFILE=openai for hosted models)
+	$(BACKEND) KB_EVAL_REPORT_DIR=../eval/reports uv run pytest -m eval -q
+
 .PHONY: check
-check: lint test ## What CI runs
+check: lint test eval ## What CI runs
