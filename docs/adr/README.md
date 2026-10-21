@@ -23,5 +23,6 @@ the history of *why* is never rewritten.
 | [0014](0014-delivery-pipeline-and-deployment-targets.md) | Delivery pipeline: web on Vercel, signed images for the backend | Proposed |
 | [0015](0015-ingestion-consistency-and-object-storage.md) | Ingestion consistency; SeaweedFS instead of MinIO | Proposed |
 | [0016](0016-gate-merges-on-a-versioned-evaluation-set.md) | Gate merges on a versioned evaluation set run through the real pipeline | Proposed |
+| [0017](0017-quarantine-instruction-like-passages-at-ingestion.md) | Quarantine instruction-like passages at ingestion | Proposed |
 
 Template: [`template.md`](template.md).

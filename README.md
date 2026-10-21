@@ -10,7 +10,7 @@
 
 **Status:** Phase 4 of 7 done. Employees ask questions and get cited answers
 drawn only from what they may read; every pull request is measured on an
-86-question evaluation set and blocked if quality drops or anything leaks.
+88-question evaluation set and blocked if quality drops or anything leaks.
 Enterprise features (feedback, analytics, limits) are next.
 
 ## Why this is not another "chat with your PDF"
@@ -61,16 +61,17 @@ Enterprise features (feedback, analytics, limits) are next.
   evidence, retries once, then answers with citations, asks for clarification
   or says it doesn't know. Every sentence must cite a retrieved source or it is
   dropped before the user sees it.
-- **Quality measured, thresholds calibrated, regressions blocked.** 86 questions,
-  each with its asker, over 30 documents from two tenants that disagree on
-  purpose (25 vs 22 days of leave). The gate checks hit@k, MRR, answer accuracy,
+- **Quality measured, thresholds calibrated, regressions blocked.** 88 questions,
+  each with its asker, over 31 documents from two tenants that disagree on
+  purpose (25 vs 22 days of leave), one of them carrying a planted prompt
+  injection that must never reach an answer. The gate checks hit@k, MRR, answer accuracy,
   citation precision, abstention and leaks on every pull request, and
   `min_score` is the measured middle of its best interval, not a guess
   ([EVALUATION.md](docs/EVALUATION.md)).
 
   | hit@5 | MRR | Answer accuracy | Abstention accuracy | Leaked chunks |
   |---|---|---|---|---|
-  | 100 % | 0.991 | 94.4 % | 98.8 % | 0 |
+  | 100 % | 0.991 | 94.6 % | 98.9 % | 0 |
 
   *Offline profile (lexical embedder, extractive model): a pipeline baseline,
   not a claim about a hosted model.*
@@ -130,7 +131,7 @@ as in production.
 - [Evaluation](docs/EVALUATION.md): dataset, metric definitions, threshold
   calibration, baseline, the gate, and what the numbers do not prove.
 - [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
-- [Architecture Decision Records](docs/adr/README.md): sixteen decisions, each
+- [Architecture Decision Records](docs/adr/README.md): seventeen decisions, each
   with the options weighed and when to revisit it.
 
 ## Stack

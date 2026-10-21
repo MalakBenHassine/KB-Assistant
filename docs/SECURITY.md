@@ -131,14 +131,21 @@ worst outcome is a misleading answer to the person who asked, not a breach.
 - Rendering: markdown without raw HTML, **no images**, links allowed only to
   internal citation anchors. This closes the markdown-image exfiltration channel.
 - Ingestion normalizes text (Unicode NFKC, strips zero-width and bidi control
-  characters) and flags documents with a high density of instruction-like
-  phrases for admin review. The flag is advisory, not a security boundary.
+  characters) and **quarantines** paragraphs that address the assistant
+  ("ignore all previous instructions", "you are now in maintenance mode"): they
+  are removed from the indexed text, the original file is kept, and the version
+  records how many were removed for admin review
+  ([ADR-0017](adr/0017-quarantine-instruction-like-passages-at-ingestion.md)).
+  It matches known phrasings only; paraphrased or translated attacks pass, and
+  the layers above remain the boundary.
 
 *Tests.*
-- `test_injection_corpus_does_not_change_behaviour`: a fixture set of known
-  injection payloads planted in documents; assert answers cite only sources,
-  contain no external URLs, and do not reveal the system prompt (eval-style,
-  Phase 4).
+- The evaluation set plants an injection in a corpus document and gates on
+  its claims never appearing in an answer (`injection-01`, `injection-02`,
+  `facts from the wrong source = 0`, [EVALUATION.md](EVALUATION.md)).
+- `test_instructions_to_the_assistant_are_quarantined_and_counted`,
+  `test_the_evaluation_corpus_loses_only_the_planted_paragraph` (false-positive
+  guard), `test_ordinary_company_text_is_left_alone`.
 - `test_document_cannot_close_its_delimiter`.
 - `test_renderer_strips_images_and_external_links` (frontend).
 
@@ -309,7 +316,7 @@ a contractual risk more than a technical one, and it is documented as such.
 | 1 | JWT verification, refresh rotation, RBAC policies, RLS, RFC 7807, log redaction, gitleaks, Trivy, pinned actions |
 | 2 | Upload validation, parser hardening, worker network restrictions, idempotent and archived versions |
 | 3 | `RetrievalScope`, three enforcement points, prompt delimiters, citation validation, the isolation test suite |
-| 4 | Injection corpus in the eval set, abstention correctness gate |
+| 4 | Injection case in the eval set, quarantine of instruction-like passages, abstention correctness gate |
 | 5 | Rate limits, budgets, audit log hash chain, retention jobs |
 | 6 | CSP, safe markdown rendering, BFF cookies and CSRF |
 | 7 | NetworkPolicies, non-root read-only containers, Secrets management, SBOM |

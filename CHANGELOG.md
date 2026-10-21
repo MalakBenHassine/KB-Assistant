@@ -12,6 +12,10 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   unanswerable, out of scope, chitchat), hit@k, MRR, answer accuracy, citation
   precision, lexical faithfulness, abstention accuracy and leak counts, threshold
   calibration, Markdown and JSON reports, and a CI quality gate (`make eval`).
+- Prompt-injection defence at ingestion: paragraphs that address the assistant
+  are quarantined from the index and counted on the version
+  (`quarantined_passages`, migration 0004, ADR-0017); the evaluation set plants
+  an injection and gates on its claims never reaching an answer.
 
 - Question answering: a LangGraph workflow (classify, rewrite, retrieve within
   the caller's scope, grade, bounded retry, rerank, generate, validate citations,

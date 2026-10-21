@@ -11,12 +11,12 @@
 require_calibrated_threshold = true
 
 [offline.min]
-hit_at_5 = 0.98             # baseline 1.000 (54/54)
+hit_at_5 = 0.98             # baseline 1.000 (56/56)
 mrr = 0.95                  # baseline 0.991
-answer_accuracy = 0.92      # baseline 0.944 (51/54)
-citation_precision = 0.90   # baseline 0.935
+answer_accuracy = 0.92      # baseline 0.946 (53/56)
+citation_precision = 0.90   # baseline 0.938
 faithfulness = 0.95         # baseline 1.000
-abstention_accuracy = 0.97  # baseline 0.988 (85/86)
+abstention_accuracy = 0.97  # baseline 0.989 (87/88)
 abstention_recall = 0.93    # baseline 0.966 (28/29)
 
 [offline.max]
