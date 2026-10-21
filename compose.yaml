@@ -94,6 +94,12 @@ services:
       KB_AUTH__PRIVATE_KEY_FILE: /run/secrets/jwt_signing_key
       KB_AUTH__KEY_ID: local-dev
       KB_STORAGE__CREATE_BUCKET: "true"
+      # Rate limits (ADR-0018). The defaults match the application's; `make loadtest`
+      # raises them for its run only.
+      KB_LIMITS__CHAT_USER_PER_MINUTE: ${KB_LIMITS_CHAT_USER_PER_MINUTE:-10}
+      KB_LIMITS__CHAT_USER_BURST: ${KB_LIMITS_CHAT_USER_BURST:-5}
+      KB_LIMITS__CHAT_TENANT_PER_MINUTE: ${KB_LIMITS_CHAT_TENANT_PER_MINUTE:-300}
+      KB_LIMITS__CHAT_TENANT_BURST: ${KB_LIMITS_CHAT_TENANT_BURST:-50}
     secrets:
       - jwt_signing_key
     ports:

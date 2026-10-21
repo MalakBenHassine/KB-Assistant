@@ -1,0 +1,9 @@
+# Accepted Trivy findings. Each entry is scoped to the files it concerns and says why.
+misconfigurations:
+  - id: KSV-0109
+    paths:
+      - "deploy/helm/kb-assistant/templates/config.yaml"
+    statement: >-
+      False positive: KB_LIMITS__DEFAULT_MONTHLY_TOKEN_BUDGET is a number of model
+      tokens, not a credential. Secrets never reach this ConfigMap: values.schema.json
+      refuses config keys that look like secrets, and they come from a Secret.

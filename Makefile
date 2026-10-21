@@ -89,5 +89,22 @@ test: ## Run every test (needs Docker for testcontainers)
 eval: ## Run the evaluation and its quality gate; reports in eval/reports (KB_EVAL_PROFILE=openai for hosted models)
 	$(BACKEND) KB_EVAL_REPORT_DIR=../eval/reports uv run pytest -m eval -q
 
+K6_IMAGE := grafana/k6:2.3.0
+LOADTEST_LIMITS := KB_LIMITS_CHAT_USER_PER_MINUTE=100000 KB_LIMITS_CHAT_USER_BURST=1000 \
+  KB_LIMITS_CHAT_TENANT_PER_MINUTE=100000 KB_LIMITS_CHAT_TENANT_BURST=1000
+
+.PHONY: loadtest
+loadtest: ## Load-test the answering path on the running stack (rate limits raised for the run only)
+	$(LOADTEST_LIMITS) $(COMPOSE) up --detach --wait api
+	set -a && source .env && set +a && status=0 && \
+	  docker run --rm --network host -e KB_SEED_PASSWORD \
+	    -e API_URL=http://127.0.0.1:$${KB_API_PORT:-8000} \
+	    -v $(CURDIR)/loadtest:/scripts:ro $(K6_IMAGE) run /scripts/chat.js || status=$$?; \
+	  $(COMPOSE) up --detach --wait api; exit $$status
+
+.PHONY: chart
+chart: ## Lint, render and validate the Helm chart (needs helm and kubeconform)
+	scripts/check-chart.sh
+
 .PHONY: check
 check: lint test eval ## What CI runs
