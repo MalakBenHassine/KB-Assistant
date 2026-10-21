@@ -56,6 +56,10 @@ up: env keys ## Build and start the whole stack
 seed: ## Create the demo tenants and users (password: KB_SEED_PASSWORD in .env)
 	$(COMPOSE) --profile seed run --rm seed
 
+.PHONY: demo
+demo: seed ## Seed, then load the 31 evaluation documents into the demo tenants
+	scripts/load-demo-corpus.sh
+
 .PHONY: down
 down: ## Stop the stack (data is kept)
 	$(COMPOSE) down
@@ -78,6 +82,7 @@ lint: ## Lint and type-check everything
 .PHONY: test
 test: ## Run every test (needs Docker for testcontainers)
 	$(BACKEND) uv run pytest --cov --cov-report=term
+	$(WEB) npm test
 	$(BACKEND) uv run coverage report --include="src/kb_assistant/domain/*,src/kb_assistant/application/*" --fail-under=80
 
 .PHONY: eval

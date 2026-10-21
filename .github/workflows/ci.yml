@@ -105,6 +105,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
+      - run: npm test
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - run: npm run build
@@ -194,6 +195,8 @@ jobs:
             -d '{"question": "How many days of paid leave do employees get?"}' \
             | tee answer.json \
             | jq -e '.abstained == false and (.citations | length) > 0'
+      - name: Use the web app as a browser does (CSP, cookies, CSRF check, SSE through the BFF)
+        run: scripts/bff-smoke.sh http://localhost:3000
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color
