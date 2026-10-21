@@ -2,6 +2,8 @@
 
     python -m kb_assistant.cli generate-signing-key --out .secrets/jwt_signing_key.pem
     python -m kb_assistant.cli seed-demo
+    python -m kb_assistant.cli purge-expired-messages --older-than-days 365
+    python -m kb_assistant.cli audit-heads
 
 `seed-demo` connects as the schema owner (`KB_DATABASE__MIGRATION_URL`) because
 creating tenants is a platform operation the API role is not allowed to do.
@@ -13,6 +15,7 @@ import asyncio
 import os
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -31,6 +34,7 @@ from kb_assistant.infrastructure.db.tables import (
     UserRow,
 )
 from kb_assistant.infrastructure.security.passwords import Argon2PasswordHasher
+from kb_assistant.maintenance import audit_heads, purge_expired_messages
 
 RSA_KEY_BITS = 3072
 
@@ -144,18 +148,50 @@ async def seed_demo() -> None:
         await engine.dispose()
 
 
+def _owner_url() -> str:
+    url = os.environ.get("KB_DATABASE__MIGRATION_URL")
+    if not url:
+        raise SystemExit("KB_DATABASE__MIGRATION_URL must be set")
+    return url
+
+
+async def _purge(days: int) -> None:
+    engine = create_async_engine(_owner_url())
+    try:
+        for p in await purge_expired_messages(engine, older_than_days=days, now=datetime.now(UTC)):
+            print(f"tenant {p.tenant_id}: {p.messages} messages purged")
+    finally:
+        await engine.dispose()
+
+
+async def _heads() -> None:
+    engine = create_async_engine(_owner_url())
+    try:
+        for line in await audit_heads(engine, now=datetime.now(UTC)):
+            print(line)
+    finally:
+        await engine.dispose()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kb_assistant.cli")
     sub = parser.add_subparsers(dest="command", required=True)
     key = sub.add_parser("generate-signing-key", help="create an RSA key for access tokens")
     key.add_argument("--out", type=Path, required=True)
     sub.add_parser("seed-demo", help="create the demo tenants, departments and users")
+    purge = sub.add_parser("purge-expired-messages", help="apply the message retention period")
+    purge.add_argument("--older-than-days", type=int, required=True)
+    sub.add_parser("audit-heads", help="print each tenant's audit chain head as JSON lines")
     args = parser.parse_args(argv)
 
     if args.command == "generate-signing-key":
         generate_signing_key(args.out)
     elif args.command == "seed-demo":
         asyncio.run(seed_demo())
+    elif args.command == "purge-expired-messages":
+        asyncio.run(_purge(args.older_than_days))
+    elif args.command == "audit-heads":
+        asyncio.run(_heads())
     return 0
 
 

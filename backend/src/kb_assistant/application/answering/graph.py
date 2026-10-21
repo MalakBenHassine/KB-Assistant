@@ -23,7 +23,7 @@ import operator
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal, Protocol, TypedDict
 
 from langgraph.config import get_stream_writer
@@ -49,6 +49,7 @@ from kb_assistant.application.answering.prompts import (
     relevance_user,
     rewrite_user,
 )
+from kb_assistant.application.telemetry import NullNodeTracer
 from kb_assistant.domain.chat import (
     AbstainReason,
     Citation,
@@ -60,7 +61,7 @@ from kb_assistant.domain.chat import (
 )
 from kb_assistant.domain.documents import RetrievalScope
 from kb_assistant.domain.errors import ProviderUnavailableError
-from kb_assistant.domain.ports import ChatModel, Embedder, Reranker, VectorStore
+from kb_assistant.domain.ports import ChatModel, Embedder, NodeTracer, Reranker, VectorStore
 
 log = logging.getLogger(__name__)
 
@@ -141,6 +142,7 @@ class GraphDeps:
     reranker: Reranker | None
     policy: AnswerPolicy
     nonce: Callable[[], str] = lambda: secrets.token_hex(8)
+    tracer: NodeTracer = field(default_factory=NullNodeTracer)
 
 
 MESSAGES: Mapping[AbstainReason, str] = {
@@ -220,10 +222,11 @@ class _Node(Protocol):
     def __call__(self, state: GraphState) -> Awaitable[dict[str, Any]]: ...
 
 
-def _timed(name: str, fn: _Node) -> _Node:
+def _timed(name: str, fn: _Node, tracer: NodeTracer) -> _Node:
     async def node(state: GraphState) -> dict[str, Any]:
         started = time.perf_counter()
-        update = await fn(state)
+        with tracer.span(name):
+            update = await fn(state)
         update["node_timings_ms"] = {name: round((time.perf_counter() - started) * 1000, 2)}
         return update
 
@@ -477,7 +480,7 @@ def build_answer_graph(deps: GraphDeps) -> Any:
         ("abstain", abstain),
         ("polite_refusal", polite_refusal),
     ):
-        graph.add_node(name, _timed(name, fn))
+        graph.add_node(name, _timed(name, fn, deps.tracer))
 
     graph.add_edge(START, "classify_intent")
     graph.add_conditional_edges(

@@ -5,6 +5,7 @@ The application layer never imports an adapter.
 """
 
 from collections.abc import AsyncIterator, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Protocol
@@ -312,6 +313,41 @@ class AnalyticsQueries(Protocol):
         self, *, since: datetime, department_ids: Sequence[DepartmentId] | None, gaps: int
     ) -> Analytics:
         """`department_ids=None`: the whole tenant."""
+        ...
+
+
+class Telemetry(Protocol):
+    """Counters and timings for operators (ARCHITECTURE §10). Never content."""
+
+    def request_finished(
+        self, *, method: str, route: str | None, status: int, seconds: float
+    ) -> None: ...
+
+    def answer_finished(
+        self,
+        *,
+        answered: bool,
+        grade: str | None,
+        abstain_reason: str | None,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        hydration_rejections: int,
+        seconds: float,
+    ) -> None: ...
+
+    def rate_limited(self, kind: str) -> None: ...
+
+    def ingestion_finished(self, *, status: str, seconds: float) -> None: ...
+
+    def exposition(self) -> tuple[bytes, str]:
+        """The current samples and their media type, for a scrape."""
+        ...
+
+
+class NodeTracer(Protocol):
+    def span(self, name: str) -> AbstractContextManager[Any]:
+        """A trace span around one step of the answering graph."""
         ...
 
 

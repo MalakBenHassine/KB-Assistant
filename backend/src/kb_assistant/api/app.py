@@ -16,7 +16,7 @@ from kb_assistant.api.routers import (
     jwks,
     tenancy,
 )
-from kb_assistant.bootstrap import Container, build_container, configure_runtime
+from kb_assistant.bootstrap import Container, build_container, configure_runtime, observe_app
 from kb_assistant.settings import Settings
 
 
@@ -55,4 +55,5 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
     app.include_router(conversations.router)
     app.include_router(governance.feedback)
     app.include_router(governance.admin)
+    observe_app(app)
     return app

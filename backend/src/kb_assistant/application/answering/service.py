@@ -25,6 +25,7 @@ from kb_assistant.application.answering.graph import (
 from kb_assistant.application.answering.memory import DEFAULT_TITLE, remember, title_from
 from kb_assistant.application.answering.prompts import PROMPT_VERSION
 from kb_assistant.application.governance import ChatGuard, record_usage
+from kb_assistant.application.telemetry import NullTelemetry
 from kb_assistant.domain.chat import (
     AbstainReason,
     Citation,
@@ -38,7 +39,7 @@ from kb_assistant.domain.documents import RetrievalScope
 from kb_assistant.domain.errors import ForbiddenError, NotFoundError, PolicyViolationError
 from kb_assistant.domain.ids import ConversationId, DepartmentId, MessageId, new_id
 from kb_assistant.domain.models import AuditEvent, Role
-from kb_assistant.domain.ports import Clock, UnitOfWork
+from kb_assistant.domain.ports import Clock, Telemetry, UnitOfWork
 from kb_assistant.domain.principal import Principal
 
 log = logging.getLogger(__name__)
@@ -192,6 +193,7 @@ class AskQuestion:
         clock: Clock,
         model_id: str,
         guard: ChatGuard | None = None,
+        telemetry: Telemetry | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._graph = graph
@@ -200,6 +202,7 @@ class AskQuestion:
         self._model_id = model_id
         # None: no rate limit or budget (evaluation, tests of the workflow itself).
         self._guard = guard
+        self._telemetry: Telemetry = telemetry or NullTelemetry()
 
     async def prepare(
         self,
@@ -277,6 +280,16 @@ class AskQuestion:
         latency_ms = int((time.perf_counter() - prepared.started) * 1000)
         message = self._assistant_message(prepared, answer_id, final, latency_ms)
         await self._persist(prepared, message, final)
+        self._telemetry.answer_finished(
+            answered=bool(message.citations),
+            grade=message.grade.value if message.grade else None,
+            abstain_reason=message.abstain_reason.value if message.abstain_reason else None,
+            model=self._model_id,
+            input_tokens=message.token_usage.input_tokens,
+            output_tokens=message.token_usage.output_tokens,
+            hydration_rejections=int(final.get("hydration_rejections") or 0),
+            seconds=latency_ms / 1000,
+        )
         yield AnswerEvent(
             "done",
             {

@@ -18,7 +18,15 @@ dependencies = [
     "langgraph>=1.2.13,<1.3",
     "openai>=3.35.1",
     "pgvector>=0.5.1",
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-instrumentation-celery>=0.66b1",
+    "opentelemetry-instrumentation-fastapi>=0.66b1",
+    "opentelemetry-instrumentation-redis>=0.66b1",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
+    "opentelemetry-sdk>=1.45.1",
     "pinecone>=10.0.0",
+    "prometheus-client>=0.26.0",
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.1",
     "pyjwt[crypto]>=2.15.1",
@@ -120,6 +128,7 @@ name = "Layers depend inward only (ADR-0010)"
 type = "layers"
 layers = [
     "kb_assistant.api | kb_assistant.worker | kb_assistant.cli | kb_assistant.evaluation",
+    "kb_assistant.maintenance",
     "kb_assistant.bootstrap",
     "kb_assistant.infrastructure",
     "kb_assistant.settings",

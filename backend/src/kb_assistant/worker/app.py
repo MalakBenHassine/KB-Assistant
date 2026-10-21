@@ -14,9 +14,20 @@ from typing import Any
 from uuid import UUID
 
 from celery import Celery, Task
-from celery.signals import setup_logging, worker_process_init, worker_process_shutdown
+from celery.signals import (
+    setup_logging,
+    worker_init,
+    worker_process_init,
+    worker_process_shutdown,
+)
 
-from kb_assistant.bootstrap import WorkerContainer, build_worker_container, configure_runtime
+from kb_assistant.bootstrap import (
+    WorkerContainer,
+    build_worker_container,
+    configure_runtime,
+    instrument_worker,
+    serve_worker_metrics,
+)
 from kb_assistant.domain.ids import TenantId, VersionId
 from kb_assistant.settings import WorkerSettings
 
@@ -24,6 +35,8 @@ INGEST_TASK = "kb.ingest_version"  # the contract with the API (infrastructure/j
 TASK_SOFT_TIME_LIMIT_S = 300
 TASK_TIME_LIMIT_S = 360
 RETRY_BACKOFF_S = (30, 120, 600)
+# Scraped by Prometheus when PROMETHEUS_MULTIPROC_DIR is set (Helm sets it).
+METRICS_PORT = 9100
 
 log = logging.getLogger(__name__)
 
@@ -105,9 +118,16 @@ def _configure_logging(**_: Any) -> None:
     configure_runtime(_load_settings())
 
 
+@worker_init.connect  # type: ignore[untyped-decorator]
+def _serve_metrics(**_: Any) -> None:
+    if serve_worker_metrics(METRICS_PORT):
+        log.info("worker.metrics_serving", extra={"port": METRICS_PORT})
+
+
 @worker_process_init.connect  # type: ignore[untyped-decorator]
 def _start_process(**_: Any) -> None:
     runtime.start(_load_settings())
+    instrument_worker()
 
 
 @worker_process_shutdown.connect  # type: ignore[untyped-decorator]

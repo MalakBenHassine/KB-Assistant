@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from kb_assistant.application.authorization import require_role
+from kb_assistant.application.telemetry import NullTelemetry
 from kb_assistant.domain.chat import TokenUsage
 from kb_assistant.domain.errors import (
     BudgetExhaustedError,
@@ -37,7 +38,7 @@ from kb_assistant.domain.governance import (
 )
 from kb_assistant.domain.ids import DepartmentId, FeedbackId, MessageId, new_id
 from kb_assistant.domain.models import AuditEvent, Role
-from kb_assistant.domain.ports import Clock, RateLimiter, UnitOfWork
+from kb_assistant.domain.ports import Clock, RateLimiter, Telemetry, UnitOfWork
 from kb_assistant.domain.principal import Principal
 
 MAX_FEEDBACK_COMMENT = 1_000
@@ -113,17 +114,21 @@ class ChatLimits:
 class ChatGuard:
     """Rate limits and the monthly budget, checked before any model is called (T8)."""
 
-    def __init__(self, limiter: RateLimiter, limits: ChatLimits) -> None:
+    def __init__(
+        self, limiter: RateLimiter, limits: ChatLimits, telemetry: Telemetry | None = None
+    ) -> None:
         self._limiter = limiter
         self._limits = limits
+        self._telemetry: Telemetry = telemetry or NullTelemetry()
 
     async def check_rate(self, principal: Principal) -> None:
-        for key, limit in (
-            (f"chat:user:{principal.user_id}", self._limits.per_user),
-            (f"chat:tenant:{principal.tenant_id}", self._limits.per_tenant),
+        for kind, key, limit in (
+            ("user", f"chat:user:{principal.user_id}", self._limits.per_user),
+            ("tenant", f"chat:tenant:{principal.tenant_id}", self._limits.per_tenant),
         ):
             decision = await self._limiter.hit(key, limit)
             if not decision.allowed:
+                self._telemetry.rate_limited(kind)
                 raise RateLimitedError(decision.retry_after_s)
 
     async def check_budget(self, uow: UnitOfWork, now: datetime) -> None:
@@ -132,6 +137,7 @@ class ChatGuard:
             return
         usage = await uow.usage.get(month_of(now))
         if usage.tokens >= budget:
+            self._telemetry.rate_limited("budget")
             reset = datetime.combine(next_month(usage.month), datetime.min.time(), tzinfo=UTC)
             raise BudgetExhaustedError((reset - now).total_seconds())
 

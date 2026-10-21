@@ -22,6 +22,7 @@ Nothing is ever deleted here: archived versions remain for audit.
 import asyncio
 import hashlib
 import logging
+import time
 from collections.abc import Callable, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ from datetime import timedelta
 
 from kb_assistant.application.chunking import CHUNKER_VERSION, Chunker
 from kb_assistant.application.injection import quarantine_instructions
+from kb_assistant.application.telemetry import NullTelemetry
 from kb_assistant.application.text_cleaning import clean_document
 from kb_assistant.domain.documents import (
     Chunk,
@@ -48,6 +50,7 @@ from kb_assistant.domain.ports import (
     Clock,
     DocumentParser,
     Embedder,
+    Telemetry,
     UnitOfWork,
     VectorStore,
 )
@@ -88,6 +91,7 @@ class IngestDocumentVersion:
         vectors: VectorStore,
         clock: Clock,
         policy: IngestionPolicy,
+        telemetry: Telemetry | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._blobs = blobs
@@ -97,8 +101,18 @@ class IngestDocumentVersion:
         self._vectors = vectors
         self._clock = clock
         self._policy = policy
+        self._telemetry: Telemetry = telemetry or NullTelemetry()
 
     async def execute(self, tenant_id: TenantId, version_id: VersionId) -> IngestionOutcome:
+        started = time.perf_counter()
+        outcome = await self._execute(tenant_id, version_id)
+        if outcome.status is not None:
+            self._telemetry.ingestion_finished(
+                status=outcome.status.value, seconds=time.perf_counter() - started
+            )
+        return outcome
+
+    async def _execute(self, tenant_id: TenantId, version_id: VersionId) -> IngestionOutcome:
         claimed = await self._claim(tenant_id, version_id)
         if claimed is None:
             return IngestionOutcome(status=None)

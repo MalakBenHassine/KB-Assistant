@@ -13,6 +13,7 @@ from datetime import timedelta
 from typing import Any
 
 from openai import AsyncOpenAI
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from pinecone import AsyncIndex, AsyncPinecone
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -36,6 +37,7 @@ from kb_assistant.domain.ports import (
     JobQueue,
     PasswordHasher,
     Reranker,
+    Telemetry,
     Tokenizer,
     UnitOfWork,
     VectorStore,
@@ -48,7 +50,15 @@ from kb_assistant.infrastructure.embeddings import HashingEmbedder, OpenAIEmbedd
 from kb_assistant.infrastructure.jobs import CeleryJobQueue, celery_producer
 from kb_assistant.infrastructure.llm.extractive import ExtractiveChatModel
 from kb_assistant.infrastructure.llm.openai_chat import OpenAIChatModel
+from kb_assistant.infrastructure.observability import metrics as prometheus
 from kb_assistant.infrastructure.observability.logging import configure_logging
+from kb_assistant.infrastructure.observability.metrics import PrometheusTelemetry
+from kb_assistant.infrastructure.observability.tracing import (
+    OtelNodeTracer,
+    configure_tracing,
+    instrument_app,
+    tracing_enabled,
+)
 from kb_assistant.infrastructure.parsing import DocumentParserImpl
 from kb_assistant.infrastructure.rate_limit import RedisRateLimiter
 from kb_assistant.infrastructure.rerank import PineconeReranker
@@ -164,6 +174,22 @@ def build_reranker(settings: RerankerSettings) -> tuple[Reranker | None, Closer 
     return reranker, reranker.aclose
 
 
+def serve_worker_metrics(port: int) -> bool:
+    """In the Celery parent process: serve the children's metrics (multiprocess mode)."""
+    return prometheus.serve_worker_metrics(port)
+
+
+def instrument_worker() -> None:
+    """Task tracing in a Celery child process (a no-op unless tracing is configured)."""
+    if tracing_enabled():
+        CeleryInstrumentor().instrument()  # type: ignore[no-untyped-call]
+
+
+def observe_app(app: Any) -> None:
+    """Request tracing for the HTTP app (a no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set)."""
+    instrument_app(app)
+
+
 def chat_limits(settings: Settings) -> ChatLimits:
     limits = settings.limits
     return ChatLimits(
@@ -218,6 +244,7 @@ class Container:
     answer_policy: AnswerPolicy
     answer_graph: Any = None
     chat_guard: ChatGuard | None = None
+    telemetry: Telemetry = field(default_factory=PrometheusTelemetry)
     closers: list[Closer] = field(default_factory=list)
     startup_hooks: list[Closer] = field(default_factory=list)
 
@@ -244,6 +271,7 @@ class Container:
                 chat=self.chat,
                 reranker=self.reranker,
                 policy=policy,
+                tracer=OtelNodeTracer(),
             )
         )
 
@@ -255,6 +283,7 @@ class Container:
             clock=self.clock,
             model_id=self.chat.model_id,
             guard=self.chat_guard,
+            telemetry=self.telemetry,
         )
 
     async def readiness(self) -> Readiness:
@@ -356,7 +385,10 @@ def build_container(
         startup_hooks=startup_hooks,
     )
     container.answer_graph = container.graph_for(container.answer_policy)
-    container.chat_guard = ChatGuard(RedisRateLimiter(container.redis), chat_limits(settings))
+    container.chat_guard = ChatGuard(
+        RedisRateLimiter(container.redis), chat_limits(settings), container.telemetry
+    )
+    configure_tracing("kb-assistant-api", engine)
     return container
 
 
@@ -375,6 +407,7 @@ class WorkerContainer:
     vectors: VectorStore
     clock: Clock
     ingestion_policy: IngestionPolicy
+    telemetry: Telemetry = field(default_factory=PrometheusTelemetry)
     closers: list[Closer] = field(default_factory=list)
 
     @asynccontextmanager
@@ -395,6 +428,7 @@ class WorkerContainer:
             vectors=self.vectors,
             clock=self.clock,
             policy=self.ingestion_policy,
+            telemetry=self.telemetry,
         )
 
     async def aclose(self) -> None:
@@ -412,6 +446,7 @@ def build_worker_container(
     clock: Clock | None = None,
 ) -> WorkerContainer:
     engine = build_engine(settings.database, application_name="kb-assistant-worker")
+    configure_tracing("kb-assistant-worker", engine)
     tokenizer = TiktokenTokenizer()
     closers: list[Closer] = []
     if blobs is None:

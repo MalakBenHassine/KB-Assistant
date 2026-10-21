@@ -7,7 +7,7 @@ only, never connection strings or error messages.
 """
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from kb_assistant.api.deps import ContainerDep, public_endpoint
 from kb_assistant.api.schemas import HealthOut
@@ -18,6 +18,13 @@ router = APIRouter(tags=["health"], dependencies=[Depends(public_endpoint)])
 @router.get("/healthz", response_model=HealthOut)
 async def liveness() -> HealthOut:
     return HealthOut(status="ok")
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics(container: ContainerDep) -> Response:
+    """Prometheus scrape. Not routed by the ingress: only the cluster reaches it."""
+    body, media_type = container.telemetry.exposition()
+    return Response(body, media_type=media_type)
 
 
 @router.get("/readyz", response_model=HealthOut, responses={503: {"model": HealthOut}})

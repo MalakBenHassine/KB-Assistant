@@ -58,12 +58,21 @@ class RequestContextMiddleware:
             await self.app(scope, receive, send_with_headers)
         finally:
             route = scope.get("route")
+            duration = time.perf_counter() - started
+            # The route template keeps the label set bounded; unmatched paths share one value.
+            template = getattr(route, "path", None)
+            app = scope.get("app")
+            container = getattr(getattr(app, "state", None), "container", None)
+            if container is not None:
+                container.telemetry.request_finished(
+                    method=scope["method"], route=template, status=status, seconds=duration
+                )
             log.info(
                 "http.request",
                 method=scope["method"],
                 # The route template ("/v1/memberships/{membership_id}"), not the raw path.
                 path=getattr(route, "path", scope["path"]),
                 status=status,
-                duration_ms=round((time.perf_counter() - started) * 1000, 2),
+                duration_ms=round(duration * 1000, 2),
             )
             structlog.contextvars.clear_contextvars()

@@ -69,6 +69,17 @@ def redact_processor(_logger: WrappedLogger, _name: str, event_dict: EventDict) 
     return dict(redacted)
 
 
+def trace_processor(_logger: WrappedLogger, _name: str, event_dict: EventDict) -> EventDict:
+    """Adds the current trace id, so a log line leads to its trace."""
+    # Imported here: logging must work in tools that never load tracing.
+    from kb_assistant.infrastructure.observability.tracing import current_trace_id
+
+    trace_id = current_trace_id()
+    if trace_id:
+        event_dict["trace_id"] = trace_id
+    return event_dict
+
+
 def configure_logging(level: str, *, json: bool = True) -> None:
     shared: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -78,6 +89,7 @@ def configure_logging(level: str, *, json: bool = True) -> None:
         structlog.stdlib.ExtraAdder(),
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.format_exc_info,
+        trace_processor,
         redact_processor,
     ]
     renderer: Processor = (
