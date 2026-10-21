@@ -50,6 +50,12 @@ async def current_principal(
         raise NotAuthenticatedError("A bearer access token is required.")
     claims = container.tokens.verify(credentials.credentials)
     principal = await ResolvePrincipal(uow).execute(claims)
+    # Read-only: end the transaction now so its connection goes back to the pool.
+    # Without this, every request pinned a connection until its response ended,
+    # a streamed answer included, and 25 concurrent questions exhausted the pool
+    # (found by the load test, docs/PERFORMANCE.md). The bound RLS context is kept
+    # and re-applied when the route's next query opens a transaction.
+    await uow.rollback()
     structlog.contextvars.bind_contextvars(
         tenant_id=str(principal.tenant_id), user_id=str(principal.user_id)
     )
