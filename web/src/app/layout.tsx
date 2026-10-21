@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,11 +9,14 @@ export const metadata: Metadata = {
     "Answers from your company's documents, with citations, limited to what you are allowed to read.",
 };
 
-// System fonts: no build-time download from a third party, nothing to leak at runtime.
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Every page is rendered per request: the CSP nonce is per response, and a
+// prerendered page would carry none (ADR-0020). System fonts: nothing fetched
+// from a third party at build or run time.
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }
