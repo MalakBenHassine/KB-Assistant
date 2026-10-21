@@ -96,7 +96,9 @@ pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-addopts = "-ra --strict-markers --strict-config"
+# The evaluation is slow and has its own gate: `make eval` runs it (docs/EVALUATION.md).
+addopts = "-ra --strict-markers --strict-config -m 'not eval'"
+markers = ["eval: the offline evaluation and quality gate (eval/)"]
 
 [tool.coverage.run]
 source = ["kb_assistant"]
@@ -117,7 +119,7 @@ include_external_packages = true
 name = "Layers depend inward only (ADR-0010)"
 type = "layers"
 layers = [
-    "kb_assistant.api | kb_assistant.worker | kb_assistant.cli",
+    "kb_assistant.api | kb_assistant.worker | kb_assistant.cli | kb_assistant.evaluation",
     "kb_assistant.bootstrap",
     "kb_assistant.infrastructure",
     "kb_assistant.settings",

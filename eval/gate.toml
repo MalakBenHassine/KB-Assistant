@@ -1,0 +1,31 @@
+# Quality gate for `make eval` and the CI job "Evaluation".
+#
+# `min`: the metric must be at least this; `max`: at most this.
+# Isolation limits are absolute and the same for every profile. Quality floors
+# are the recorded baseline (eval/reports/offline.md) minus about one question:
+# the offline profile is deterministic, so a drop is a real change, and a margin
+# of one question keeps a deliberate trade-off reviewable instead of blocked.
+# Raise a floor when the baseline improves; lowering one needs a reason in the PR.
+
+[offline]
+require_calibrated_threshold = true
+
+[offline.min]
+hit_at_5 = 0.98             # baseline 1.000 (54/54)
+mrr = 0.95                  # baseline 0.991
+answer_accuracy = 0.92      # baseline 0.944 (51/54)
+citation_precision = 0.90   # baseline 0.935
+faithfulness = 0.95         # baseline 1.000
+abstention_accuracy = 0.97  # baseline 0.988 (85/86)
+abstention_recall = 0.93    # baseline 0.966 (28/29)
+
+[offline.max]
+leaked_chunks = 0
+forbidden_facts = 0
+false_abstention_rate = 0.04  # baseline 0.000
+
+# Hosted models: isolation only until a baseline is recorded with a key
+# (`KB_EVAL_PROFILE=openai make eval`, docs/EVALUATION.md).
+[openai.max]
+leaked_chunks = 0
+forbidden_facts = 0
