@@ -27,5 +27,6 @@ the history of *why* is never rewritten.
 | [0018](0018-rate-limits-in-redis-token-budgets-in-postgres.md) | Rate limits in Redis, token budgets in Postgres | Proposed |
 | [0019](0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md) | A per-tenant hash chain makes the audit log tamper-evident | Proposed |
 | [0020](0020-render-every-page-per-request-for-a-nonce-based-csp.md) | Render every page per request for a nonce-based CSP; BFF details | Proposed |
+| [0021](0021-observability-and-kubernetes-packaging.md) | Observability through ports, and a Helm chart hardened by default | Proposed |
 
 Template: [`template.md`](template.md).

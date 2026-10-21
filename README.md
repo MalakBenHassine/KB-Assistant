@@ -8,11 +8,12 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 6 of 7 done. A web app where employees ask questions and
+**Status:** all seven phases done. A web app where employees ask questions and
 get cited answers streamed sentence by sentence, drawn only from what they may
 read; admins manage documents and see analytics, knowledge gaps, budgets and a
 tamper-evident audit log. Every pull request is measured on an 88-question
-evaluation set. Production readiness (Helm, tracing, dashboards) is next.
+evaluation set; the system ships as signed images and a hardened Helm chart,
+with metrics, traces, alerts, a runbook and a load test.
 
 ## Why this is not another "chat with your PDF"
 
@@ -89,6 +90,14 @@ evaluation set. Production readiness (Helm, tracing, dashboards) is next.
   every page carries a per-response CSP nonce, and answers are rendered as text
   so a document can never inject markup
   ([ADR-0020](docs/adr/0020-render-every-page-per-request-for-a-nonce-based-csp.md)).
+- **Operable, and measured under load.** Prometheus metrics with bounded labels,
+  OpenTelemetry traces with a span per graph node, a Grafana dashboard, alerts
+  that each link to a [runbook](docs/RUNBOOK.md) section, and a Helm chart that is
+  restricted by default (non-root, read-only, default-deny network) and validated
+  in CI. The first k6 run found a database connection held for the whole of
+  every request; the fix took 25 concurrent users from 2.8 % errors and a 10 s
+  p99 to 0 errors and 0.76 s, at twice the throughput
+  ([PERFORMANCE.md](docs/PERFORMANCE.md)).
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
   stand in for Pinecone and OpenAI, behind the same ports and contract tests.
 
@@ -143,8 +152,11 @@ as in production.
   mitigations, and the test that proves each one.
 - [Evaluation](docs/EVALUATION.md): dataset, metric definitions, threshold
   calibration, baseline, the gate, and what the numbers do not prove.
-- [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
-- [Architecture Decision Records](docs/adr/README.md): twenty decisions, each
+- [Deployment](docs/DEPLOYMENT.md): the pipeline, verifying an image signature, the
+  Helm chart, network rules and observability.
+- [Runbook](docs/RUNBOOK.md): what to do when each alert fires.
+- [Performance](docs/PERFORMANCE.md): the load test, its results, and the bug it found.
+- [Architecture Decision Records](docs/adr/README.md): twenty-one decisions, each
   with the options weighed and when to revisit it.
 
 ## Stack
@@ -152,7 +164,7 @@ as in production.
 Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · PostgreSQL
 with row-level security · Redis · Celery · Next.js 16 · TypeScript · Tailwind ·
 Docker · GitHub Actions · cosign · Trivy · CodeQL · LangGraph · Pinecone (pgvector
-locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana, Helm.
+locally) · OpenAI · SeaweedFS · OpenTelemetry · Prometheus · Grafana · Helm · k6.
 
 ## Roadmap
 
@@ -165,7 +177,7 @@ locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana
 | 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Done |
 | 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | Done |
 | 6 | Frontend: chat with citations, document management, dashboard | Done |
-| 7 | Production readiness: Helm, tracing, dashboards, load test | Next |
+| 7 | Production readiness: Helm, tracing, dashboards, load test | Done |
 
 ## License
 

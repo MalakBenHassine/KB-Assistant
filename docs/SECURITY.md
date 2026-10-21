@@ -334,7 +334,7 @@ a contractual risk more than a technical one, and it is documented as such.
 | 4 | Injection case in the eval set, quarantine of instruction-like passages, abstention correctness gate |
 | 5 | Rate limits, budgets, audit log hash chain and verification, formula-safe audit export (retention jobs moved to Phase 7) |
 | 6 | Nonce CSP on every page, text-only answer rendering, BFF cookies scoped by path, single-flight refresh, origin check, open-redirect guard on login |
-| 7 | NetworkPolicies, non-root read-only containers, Secrets management, SBOM |
+| 7 | Default-deny NetworkPolicies, restricted Pod Security (non-root numeric users, read-only root, no capabilities, no service-account token), secrets only from Secrets (enforced by the values schema), audit-head export, retention job, chart scanned by Trivy |
 
 ## 5. Residual risks (accepted, with reasons)
 

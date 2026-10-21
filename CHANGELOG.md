@@ -7,6 +7,13 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Operations: Prometheus metrics behind a Telemetry port (RED per route
+  template, answers, abstentions, tokens, rate-limit refusals, ingestion),
+  OpenTelemetry tracing with a span per graph node and trace ids in logs, a
+  hardened Helm chart (restricted pods, default-deny NetworkPolicies, HPAs,
+  PDBs, migration hook, retention and audit-head CronJobs, values schema),
+  a Grafana dashboard, alerts with a runbook, a k6 load test, and CI
+  validation of the chart (ADR-0021).
 - Web app: sign-in, chat with answers streamed sentence by sentence and
   numbered sources (document, headings, pages), department filter, feedback,
   conversation list and organization switcher; document upload with indexing
@@ -62,6 +69,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   gate, image scans, compose smoke test), security workflow (gitleaks, Trivy,
   dependency review, CodeQL) and CD (signed multi-arch images, Vercel deploy).
 - Architecture document, threat model, deployment guide, ADRs 0001–0014.
+
+### Fixed
+- Authentication no longer holds a database connection until the response
+  ends. Under 25 concurrent users this exhausted the pool (2.8 % errors, p99
+  10 s); after the fix: no errors, p99 0.76 s, throughput doubled.
 
 ### Changed
 - `retrieval.min_score` defaults to the calibrated 0.07 instead of the 0.2

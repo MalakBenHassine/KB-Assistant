@@ -487,7 +487,12 @@ endpoints use cursor pagination.
 | Conversation memory | A rolling summary of the last three questions, built without a model call, feeds the classify, rewrite and answer prompts so follow-ups resolve; the first question titles the conversation. |
 | Retention | Planned for Phase 7 as a scheduled job run by a maintenance role: raw messages expire after a configurable period per tenant; the audit log has its own, longer retention. The API role cannot delete either. |
 
-## 11. Deployment view (Phase 7)
+## 11. Deployment view
+
+Implemented by the Helm chart in `deploy/helm/kb-assistant`; installation,
+network rules and observability are in [DEPLOYMENT.md](DEPLOYMENT.md), the
+alerts in [RUNBOOK.md](RUNBOOK.md), measured capacity in
+[PERFORMANCE.md](PERFORMANCE.md) ([ADR-0021](adr/0021-observability-and-kubernetes-packaging.md)).
 
 ```mermaid
 flowchart LR
