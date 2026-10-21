@@ -32,6 +32,8 @@ class VersionOut(_Out):
     size_bytes: int
     checksum: str
     chunk_count: int | None
+    # Paragraphs withheld from search because they address the assistant (ADR-0017).
+    quarantined_passages: int | None
     attempts: int
     error: IngestionErrorOut | None
     created_at: datetime
@@ -56,6 +58,7 @@ class VersionOut(_Out):
             size_bytes=v.size_bytes,
             checksum=v.checksum,
             chunk_count=v.chunk_count,
+            quarantined_passages=v.quarantined_passages,
             attempts=v.attempts,
             error=error,
             created_at=v.created_at,

@@ -568,6 +568,7 @@ def _version(row: DocumentVersionRow) -> DocumentVersion:
         processing_started_at=row.processing_started_at,
         indexed_at=row.indexed_at,
         archived_at=row.archived_at,
+        quarantined_passages=row.quarantined_passages,
     )
 
 
@@ -752,6 +753,7 @@ class _Versions:
         chunker_version: str,
         embedding_model: str,
         embedding_tokens: int,
+        quarantined_passages: int,
     ) -> None:
         await self._s.execute(
             update(DocumentVersionRow)
@@ -763,6 +765,7 @@ class _Versions:
                 chunker_version=chunker_version,
                 embedding_model=embedding_model,
                 embedding_tokens=embedding_tokens,
+                quarantined_passages=quarantined_passages,
                 error_code=None,
                 error_message=None,
                 error_retryable=None,

@@ -211,6 +211,7 @@ class VersionRepository(Protocol):
         chunker_version: str,
         embedding_model: str,
         embedding_tokens: int,
+        quarantined_passages: int,
     ) -> None: ...
 
     async def mark_failed(self, version_id: VersionId, failure: IngestionFailure) -> None: ...

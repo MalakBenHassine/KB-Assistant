@@ -113,6 +113,8 @@ class DocumentVersion:
     processing_started_at: datetime | None
     indexed_at: datetime | None
     archived_at: datetime | None
+    # Paragraphs removed at ingestion as instructions to the assistant (ADR-0017).
+    quarantined_passages: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

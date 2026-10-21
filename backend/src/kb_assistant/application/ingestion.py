@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from kb_assistant.application.chunking import CHUNKER_VERSION, Chunker
+from kb_assistant.application.injection import quarantine_instructions
 from kb_assistant.application.text_cleaning import clean_document
 from kb_assistant.domain.documents import (
     Chunk,
@@ -104,7 +105,7 @@ class IngestDocumentVersion:
         version = claimed.version
         log.info("ingestion.started", extra={"version_id": str(version_id)})
         try:
-            drafts = await self._chunks(version)
+            drafts, quarantined = await self._chunks(version)
             embeddings = await self._embedder.embed_documents([d.embedding_text for d in drafts])
             if len(embeddings.vectors) != len(drafts):
                 raise IngestionError(
@@ -122,7 +123,7 @@ class IngestDocumentVersion:
             )
             return await self._fail(claimed, failure)
 
-        previous = await self._switch(claimed, drafts, embeddings.total_tokens)
+        previous = await self._switch(claimed, drafts, embeddings.total_tokens, quarantined)
         if previous is not None:
             await self._deactivate(tenant_id, previous)
         log.info(
@@ -151,14 +152,22 @@ class IngestDocumentVersion:
             return None
         return _Claimed(document=document, version=claimed)
 
-    async def _chunks(self, version: DocumentVersion) -> list[ChunkDraft]:
+    async def _chunks(self, version: DocumentVersion) -> tuple[list[ChunkDraft], int]:
+        """The chunks to index, and how many passages were quarantined (ADR-0017)."""
         data = await self._blobs.get(version.blob_key)
         # Parsing and chunking are CPU-bound: keep the event loop responsive.
         parsed = await asyncio.to_thread(self._parser.parse, data, version.mime_type)
-        drafts = await asyncio.to_thread(self._chunker.chunk, clean_document(parsed))
+        screened = quarantine_instructions(clean_document(parsed))
+        if screened.passages:
+            # Counts only: the text itself never goes to the logs (SECURITY.md T5).
+            log.warning(
+                "ingestion.instructions_quarantined",
+                extra={"version_id": str(version.id), "passages": screened.passages},
+            )
+        drafts = await asyncio.to_thread(self._chunker.chunk, screened.document)
         if not drafts:
             raise EmptyDocumentError()
-        return drafts
+        return drafts, screened.passages
 
     def _records(
         self,
@@ -182,7 +191,11 @@ class IngestDocumentVersion:
         ]
 
     async def _switch(
-        self, claimed: _Claimed, drafts: Sequence[ChunkDraft], embedding_tokens: int
+        self,
+        claimed: _Claimed,
+        drafts: Sequence[ChunkDraft],
+        embedding_tokens: int,
+        quarantined_passages: int,
     ) -> VersionId | None:
         """Commit the new version; return the version it replaced, if any."""
         document, version = claimed.document, claimed.version
@@ -216,6 +229,7 @@ class IngestDocumentVersion:
                 chunker_version=CHUNKER_VERSION,
                 embedding_model=self._embedder.model_id,
                 embedding_tokens=embedding_tokens,
+                quarantined_passages=quarantined_passages,
             )
             current = await uow.documents.get(document.id)
             current_version = (

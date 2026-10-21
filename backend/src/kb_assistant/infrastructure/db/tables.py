@@ -243,6 +243,7 @@ class DocumentVersionRow(Base):
     chunker_version: Mapped[str | None] = mapped_column(String(32))
     embedding_model: Mapped[str | None] = mapped_column(String(100))
     embedding_tokens: Mapped[int | None]
+    quarantined_passages: Mapped[int | None]
     created_by: Mapped[UUID]
     created_at: Mapped[datetime]
     processing_started_at: Mapped[datetime | None]
