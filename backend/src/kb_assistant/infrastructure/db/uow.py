@@ -20,7 +20,6 @@ Repositories also filter on the bound tenant explicitly. RLS is the safety net,
 not the only mechanism: a query that relies on it alone is a bug.
 """
 
-import ipaddress
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
@@ -64,10 +63,8 @@ from kb_assistant.domain.ids import (
     TokenFamilyId,
     UserId,
     VersionId,
-    new_id,
 )
 from kb_assistant.domain.models import (
-    AuditEvent,
     Department,
     Invitation,
     Membership,
@@ -76,8 +73,14 @@ from kb_assistant.domain.models import (
     Tenant,
     User,
 )
+from kb_assistant.infrastructure.db.governance import (
+    AnalyticsQueries,
+    AuditLog,
+    FeedbackRepository,
+    TenantSettingsRepository,
+    UsageRepository,
+)
 from kb_assistant.infrastructure.db.tables import (
-    AuditLogRow,
     ChunkRow,
     ConversationRow,
     DepartmentRow,
@@ -133,12 +136,16 @@ class SqlAlchemyUnitOfWork:
         self.departments = _Departments(session, self._context)
         self.invitations = _Invitations(session, self._context)
         self.refresh_tokens = _RefreshTokens(session)
-        self.audit = _Audit(session)
+        self.audit = AuditLog(session, self._context)
         self.documents = _Documents(session, self._context)
         self.versions = _Versions(session, self._context)
         self.chunks = _Chunks(session, self._context)
         self.conversations = _Conversations(session, self._context)
         self.messages = _Messages(session, self._context)
+        self.feedback = FeedbackRepository(session, self._context)
+        self.tenant_settings = TenantSettingsRepository(session, self._context)
+        self.usage = UsageRepository(session, self._context)
+        self.analytics = AnalyticsQueries(session, self._context)
 
     def _apply_context(
         self, _session: Session, _transaction: SessionTransaction, connection: Connection
@@ -495,35 +502,6 @@ class _RefreshTokens:
             .values(revoked_at=at)
         )
         return int(getattr(result, "rowcount", 0) or 0)
-
-
-class _Audit:
-    """Append-only: the API role has INSERT on `audit_log`, not UPDATE or DELETE."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._s = session
-
-    async def record(self, event: AuditEvent) -> None:
-        await self._s.execute(
-            insert(AuditLogRow).values(
-                id=new_id(),
-                tenant_id=event.tenant_id,
-                actor_user_id=event.actor_user_id,
-                action=event.action,
-                target=event.target,
-                ip=_valid_ip(event.ip),
-                details=event.details,
-            )
-        )
-
-
-def _valid_ip(raw: str | None) -> str | None:
-    if raw is None:
-        return None
-    try:
-        return str(ipaddress.ip_address(raw))
-    except ValueError:
-        return None
 
 
 # --------------------------------------------------------------------------- documents
@@ -972,6 +950,21 @@ class _Conversations:
             .values(updated_at=at)
         )
 
+    async def remember(
+        self, conversation_id: ConversationId, *, at: datetime, summary: str, title: str | None
+    ) -> None:
+        values: dict[str, Any] = {"updated_at": at, "summary": summary}
+        if title is not None:
+            values["title"] = title
+        await self._s.execute(
+            update(ConversationRow)
+            .where(
+                ConversationRow.id == conversation_id,
+                ConversationRow.tenant_id == self._ctx.tenant_id,
+            )
+            .values(**values)
+        )
+
 
 def _citation_json(c: Citation) -> dict[str, Any]:
     return {
@@ -1019,6 +1012,7 @@ def _message(row: MessageRow) -> Message:
         thresholds=dict(row.thresholds),
         token_usage=TokenUsage(**row.token_usage),
         latency_ms=row.latency_ms,
+        scope_department_ids=tuple(DepartmentId(d) for d in row.scope_department_ids),
     )
 
 
@@ -1055,8 +1049,17 @@ class _Messages:
                 },
                 latency_ms=message.latency_ms,
                 created_at=message.created_at,
+                scope_department_ids=list(message.scope_department_ids),
             )
         )
+
+    async def get(self, message_id: MessageId) -> Message | None:
+        row = await self._s.scalar(
+            select(MessageRow).where(
+                MessageRow.id == message_id, MessageRow.tenant_id == self._ctx.tenant_id
+            )
+        )
+        return _message(row) if row else None
 
     async def list_for_conversation(self, conversation_id: ConversationId) -> list[Message]:
         rows = await self._s.scalars(

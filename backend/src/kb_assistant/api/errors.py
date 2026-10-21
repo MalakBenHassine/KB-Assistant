@@ -5,6 +5,7 @@ the HTTP status, a human-readable `detail` and the `request_id` to quote to
 support. Stack traces, SQL and other tenants' data never do.
 """
 
+import math
 from http import HTTPStatus
 from typing import Any
 
@@ -23,6 +24,7 @@ from kb_assistant.domain.errors import (
     NotAuthenticatedError,
     NotFoundError,
     PolicyViolationError,
+    RateLimitedError,
     UnsupportedDocumentError,
 )
 
@@ -37,6 +39,7 @@ _STATUS_BY_ERROR: tuple[tuple[type[DomainError], int], ...] = (
     (PolicyViolationError, 422),
     (DocumentTooLargeError, 413),
     (UnsupportedDocumentError, 415),
+    (RateLimitedError, 429),
 )
 
 log = structlog.get_logger(__name__)
@@ -76,6 +79,9 @@ async def _domain_error(request: Request, exc: Exception) -> JSONResponse:
         raise exc
     status = _status_for(exc)
     headers = {"WWW-Authenticate": "Bearer"} if status == 401 else None
+    if isinstance(exc, RateLimitedError):
+        # Whole seconds, rounded up, never 0 (RFC 9110 §10.2.3).
+        headers = {"Retry-After": str(max(1, math.ceil(exc.retry_after_s)))}
     return problem(request, status=status, code=exc.code, detail=exc.detail, headers=headers)
 
 

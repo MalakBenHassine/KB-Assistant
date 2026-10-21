@@ -56,6 +56,33 @@ class PolicyViolationError(DomainError):
     code = "policy_violation"
 
 
+class RateLimitedError(DomainError):
+    """Too many questions in a short time (SECURITY.md T8)."""
+
+    code = "rate_limited"
+
+    def __init__(
+        self,
+        retry_after_s: float,
+        detail: str = "Too many questions in a short time. Wait a moment and try again.",
+    ) -> None:
+        super().__init__(detail)
+        self.retry_after_s = retry_after_s
+
+
+class BudgetExhaustedError(RateLimitedError):
+    """The tenant spent its monthly token budget; it resets on the 1st (UTC)."""
+
+    code = "budget_exhausted"
+
+    def __init__(self, retry_after_s: float) -> None:
+        super().__init__(
+            retry_after_s,
+            "Your organization has used its monthly question budget. "
+            "An administrator can raise it.",
+        )
+
+
 class UnsupportedDocumentError(DomainError):
     """Rejected at upload: not one of the four accepted formats, whatever its name says."""
 

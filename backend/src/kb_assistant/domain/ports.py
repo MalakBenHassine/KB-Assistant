@@ -6,7 +6,7 @@ The application layer never imports an adapter.
 
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Protocol
 
 from kb_assistant.domain.chat import (
@@ -17,6 +17,7 @@ from kb_assistant.domain.chat import (
     RetrievedChunk,
     StreamChunk,
     StructuredReply,
+    TokenUsage,
 )
 from kb_assistant.domain.documents import (
     Chunk,
@@ -30,11 +31,21 @@ from kb_assistant.domain.documents import (
     VectorMatch,
     VectorRecord,
 )
+from kb_assistant.domain.governance import (
+    Analytics,
+    AuditEntry,
+    Feedback,
+    Limit,
+    RateDecision,
+    TenantSettings,
+    Usage,
+)
 from kb_assistant.domain.ids import (
     ConversationId,
     DepartmentId,
     DocumentId,
     MembershipId,
+    MessageId,
     RefreshTokenId,
     TenantId,
     TokenFamilyId,
@@ -160,7 +171,19 @@ class RefreshTokenRepository(Protocol):
 
 
 class AuditLog(Protocol):
-    async def record(self, event: AuditEvent) -> None: ...
+    async def record(self, event: AuditEvent) -> None:
+        """Append to the tenant's hash chain (ADR-0019)."""
+        ...
+
+    async def page(
+        self, *, cursor: str | None, limit: int, action: str | None
+    ) -> tuple[list[AuditEntry], str | None]:
+        """Newest first; returns the cursor of the next page, or None."""
+        ...
+
+    async def chain(self, *, after_seq: int, limit: int) -> list[AuditEntry]:
+        """Chained entries in `seq` order, for verification."""
+        ...
 
 
 class DocumentRepository(Protocol):
@@ -249,11 +272,53 @@ class ConversationRepository(Protocol):
 
     async def touch(self, conversation_id: ConversationId, at: datetime) -> None: ...
 
+    async def remember(
+        self, conversation_id: ConversationId, *, at: datetime, summary: str, title: str | None
+    ) -> None:
+        """Store the rolling summary; set the title too when one is given."""
+        ...
+
 
 class MessageRepository(Protocol):
     async def add(self, message: Message) -> None: ...
 
+    async def get(self, message_id: MessageId) -> Message | None: ...
+
     async def list_for_conversation(self, conversation_id: ConversationId) -> list[Message]: ...
+
+
+class FeedbackRepository(Protocol):
+    async def upsert(self, feedback: Feedback) -> Feedback:
+        """Insert, or replace this person's earlier rating of the same message."""
+        ...
+
+
+class TenantSettingsRepository(Protocol):
+    async def get(self) -> TenantSettings | None: ...
+
+    async def put(self, settings: TenantSettings, *, now: datetime) -> None: ...
+
+
+class UsageRepository(Protocol):
+    async def get(self, month: date) -> Usage: ...
+
+    async def add(self, month: date, *, questions: int, tokens: TokenUsage) -> None:
+        """Atomic increment."""
+        ...
+
+
+class AnalyticsQueries(Protocol):
+    async def summarize(
+        self, *, since: datetime, department_ids: Sequence[DepartmentId] | None, gaps: int
+    ) -> Analytics:
+        """`department_ids=None`: the whole tenant."""
+        ...
+
+
+class RateLimiter(Protocol):
+    async def hit(self, key: str, limit: Limit) -> RateDecision:
+        """Spend one request from the bucket `key`."""
+        ...
 
 
 class ChatModel(Protocol):
@@ -385,6 +450,18 @@ class UnitOfWork(Protocol):
 
     @property
     def messages(self) -> MessageRepository: ...
+
+    @property
+    def feedback(self) -> FeedbackRepository: ...
+
+    @property
+    def tenant_settings(self) -> TenantSettingsRepository: ...
+
+    @property
+    def usage(self) -> UsageRepository: ...
+
+    @property
+    def analytics(self) -> AnalyticsQueries: ...
 
     async def bind(self, *, tenant_id: TenantId | None, user_id: UserId | None) -> None:
         """Scope the transaction to one tenant; clears any wider grant made before."""

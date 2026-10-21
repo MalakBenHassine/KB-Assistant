@@ -7,7 +7,15 @@ from fastapi import FastAPI
 
 from kb_assistant.api.errors import install_error_handlers
 from kb_assistant.api.middleware import RequestContextMiddleware
-from kb_assistant.api.routers import auth, conversations, documents, health, jwks, tenancy
+from kb_assistant.api.routers import (
+    auth,
+    conversations,
+    documents,
+    governance,
+    health,
+    jwks,
+    tenancy,
+)
 from kb_assistant.bootstrap import Container, build_container, configure_runtime
 from kb_assistant.settings import Settings
 
@@ -45,4 +53,6 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
     app.include_router(tenancy.router)
     app.include_router(documents.router)
     app.include_router(conversations.router)
+    app.include_router(governance.feedback)
+    app.include_router(governance.admin)
     return app

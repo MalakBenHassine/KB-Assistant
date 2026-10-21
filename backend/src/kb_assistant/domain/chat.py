@@ -139,3 +139,5 @@ class Message:
     thresholds: dict[str, Any] = field(default_factory=dict)
     token_usage: TokenUsage = TokenUsage()
     latency_ms: int | None = None
+    # The departments the question searched: scopes analytics (ADR-0019).
+    scope_department_ids: tuple[DepartmentId, ...] = ()

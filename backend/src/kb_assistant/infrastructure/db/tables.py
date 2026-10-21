@@ -5,7 +5,7 @@ security policies and grants are not something autogenerate understands; this
 module mirrors them for queries, and a test checks the two never drift.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -14,12 +14,14 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
     MetaData,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -185,8 +187,15 @@ class AuditLogRow(Base):
     ip: Mapped[str | None] = mapped_column(INET)
     details: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    # Per-tenant hash chain (ADR-0019); NULL for rows written before it existed.
+    seq: Mapped[int | None] = mapped_column(BigInteger)
+    prev_hash: Mapped[str | None] = mapped_column(String(64))
+    hash: Mapped[str | None] = mapped_column(String(64))
 
-    __table_args__ = (Index("ix_audit_log_tenant_created", "tenant_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_audit_log_tenant_created", "tenant_id", "created_at"),
+        UniqueConstraint("tenant_id", "seq"),
+    )
 
 
 # ----------------------------------------------------------------------------- documents
@@ -366,6 +375,9 @@ class MessageRow(Base):
     token_usage: Mapped[dict[str, Any]] = mapped_column(JSONB)
     latency_ms: Mapped[int | None]
     created_at: Mapped[datetime]
+    scope_department_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True)), server_default=text("'{}'")
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -375,4 +387,67 @@ class MessageRow(Base):
         ),
         CheckConstraint("role IN ('user', 'assistant')", name="role_known"),
         Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+        Index("ix_messages_tenant_created", "tenant_id", "created_at"),
     )
+
+
+# ----------------------------------------------------------------------------- governance
+
+FEEDBACK_REASONS = ("incorrect", "incomplete", "not_relevant", "outdated", "other")
+
+
+class FeedbackRow(Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    tenant_id: Mapped[UUID]
+    message_id: Mapped[UUID]
+    membership_id: Mapped[UUID]
+    rating: Mapped[int] = mapped_column(SmallInteger)
+    reason: Mapped[str | None] = mapped_column(String(32))
+    comment: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "membership_id"),
+        ForeignKeyConstraint(["message_id"], ["messages.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["membership_id", "tenant_id"],
+            ["memberships.id", "memberships.tenant_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("rating IN (-1, 1)", name="rating_known"),
+        CheckConstraint(f"reason IS NULL OR reason IN {FEEDBACK_REASONS}", name="reason_known"),
+        CheckConstraint("length(comment) <= 1000", name="comment_length"),
+        Index("ix_feedback_tenant_created", "tenant_id", "created_at"),
+    )
+
+
+class TenantSettingsRow(Base):
+    __tablename__ = "tenant_settings"
+
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    monthly_token_budget: Mapped[int | None] = mapped_column(BigInteger)
+    updated_at: Mapped[datetime]
+
+    __table_args__ = (
+        CheckConstraint(
+            "monthly_token_budget IS NULL OR monthly_token_budget >= 0",
+            name="budget_non_negative",
+        ),
+    )
+
+
+class TenantUsageRow(Base):
+    __tablename__ = "tenant_usage"
+
+    tenant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    month: Mapped[date] = mapped_column(Date, primary_key=True)
+    questions: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    input_tokens: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    output_tokens: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))

@@ -22,7 +22,9 @@ from kb_assistant.application.answering.graph import (
     LlmBudgetExceededError,
     recursion_limit,
 )
+from kb_assistant.application.answering.memory import DEFAULT_TITLE, remember, title_from
 from kb_assistant.application.answering.prompts import PROMPT_VERSION
+from kb_assistant.application.governance import ChatGuard, record_usage
 from kb_assistant.domain.chat import (
     AbstainReason,
     Citation,
@@ -101,7 +103,7 @@ class CreateConversation:
             id=ConversationId(new_id()),
             tenant_id=principal.tenant_id,
             membership_id=principal.membership_id,
-            title=(title or "New conversation").strip()[:MAX_TITLE_LENGTH] or "New conversation",
+            title=(title or DEFAULT_TITLE).strip()[:MAX_TITLE_LENGTH] or DEFAULT_TITLE,
             summary=None,
             created_at=now,
             updated_at=now,
@@ -189,12 +191,15 @@ class AskQuestion:
         policy: AnswerPolicy,
         clock: Clock,
         model_id: str,
+        guard: ChatGuard | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._graph = graph
         self._policy = policy
         self._clock = clock
         self._model_id = model_id
+        # None: no rate limit or budget (evaluation, tests of the workflow itself).
+        self._guard = guard
 
     async def prepare(
         self,
@@ -211,10 +216,14 @@ class AskQuestion:
             raise PolicyViolationError(
                 f"Questions are limited to {MAX_QUESTION_LENGTH} characters."
             )
+        if self._guard is not None:
+            await self._guard.check_rate(principal)
         async with self._uow_factory() as uow:
             await uow.bind(tenant_id=principal.tenant_id, user_id=principal.user_id)
             conversation = await _own_conversation(uow, principal, conversation_id)
             scope = await retrieval_scope(uow, principal, requested_departments)
+            if self._guard is not None:
+                await self._guard.check_budget(uow, self._clock.now())
             message_id = MessageId(new_id())
             await uow.messages.add(
                 Message(
@@ -312,6 +321,7 @@ class AskQuestion:
             thresholds=self._policy.thresholds(),
             token_usage=final.get("token_usage") or TokenUsage(),
             latency_ms=latency_ms,
+            scope_department_ids=tuple(sorted(prepared.scope.department_ids)),
         )
 
     async def _persist(
@@ -321,8 +331,15 @@ class AskQuestion:
             await uow.bind(
                 tenant_id=prepared.principal.tenant_id, user_id=prepared.principal.user_id
             )
+            now = self._clock.now()
             await uow.messages.add(message)
-            await uow.conversations.touch(prepared.conversation.id, self._clock.now())
+            await uow.conversations.remember(
+                prepared.conversation.id,
+                at=now,
+                summary=remember(prepared.conversation.summary, prepared.question),
+                title=title_from(prepared.conversation.title, prepared.question),
+            )
+            await record_usage(uow, now, message.token_usage)
             await uow.audit.record(
                 AuditEvent(
                     tenant_id=prepared.principal.tenant_id,

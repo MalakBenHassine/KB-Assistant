@@ -140,6 +140,22 @@ class RetrievalSettings(BaseModel):
     answer_max_tokens: int = Field(default=1_200, ge=100, le=8_000)
 
 
+class LimitsSettings(BaseModel):
+    """Chat rate limits and the default monthly budget (SECURITY.md T8, ADR-0018).
+
+    Token buckets: `burst` questions at once, refilled at `per_minute`. The
+    defaults allow a person to work fast (a question every 6 seconds sustained,
+    5 in a row) while a script hammering the endpoint is stopped within seconds.
+    """
+
+    chat_user_per_minute: float = Field(default=10, gt=0)
+    chat_user_burst: int = Field(default=5, ge=1)
+    chat_tenant_per_minute: float = Field(default=300, gt=0)
+    chat_tenant_burst: int = Field(default=50, ge=1)
+    # Tokens per tenant and calendar month when the tenant has no setting; None: unlimited.
+    default_monthly_token_budget: int | None = Field(default=None, ge=0)
+
+
 class RerankerSettings(BaseModel):
     provider: Literal["none", "pinecone"] = "none"
     model: str = "bge-reranker-v2-m3"
@@ -183,6 +199,7 @@ class Settings(_ProcessSettings):
     llm: LLMSettings = LLMSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
     reranker: RerankerSettings = RerankerSettings()
+    limits: LimitsSettings = LimitsSettings()
     # Number of reverse proxies in front of the API whose X-Forwarded-For we trust.
     trusted_proxy_hops: int = Field(default=0, ge=0, le=3)
 

@@ -22,6 +22,7 @@ VersionId = NewType("VersionId", UUID)
 ChunkId = NewType("ChunkId", UUID)
 ConversationId = NewType("ConversationId", UUID)
 MessageId = NewType("MessageId", UUID)
+FeedbackId = NewType("FeedbackId", UUID)
 
 
 def new_id() -> UUID:

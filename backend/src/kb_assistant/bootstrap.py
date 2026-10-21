@@ -23,7 +23,9 @@ from kb_assistant.application.answering.service import AskQuestion, hydrate
 from kb_assistant.application.auth import AuthPolicy
 from kb_assistant.application.chunking import Chunker, ChunkingPolicy
 from kb_assistant.application.documents import UploadPolicy
+from kb_assistant.application.governance import ChatGuard, ChatLimits
 from kb_assistant.application.ingestion import IngestDocumentVersion, IngestionPolicy
+from kb_assistant.domain.governance import Limit
 from kb_assistant.domain.ports import (
     AccessTokenService,
     BlobStore,
@@ -48,6 +50,7 @@ from kb_assistant.infrastructure.llm.extractive import ExtractiveChatModel
 from kb_assistant.infrastructure.llm.openai_chat import OpenAIChatModel
 from kb_assistant.infrastructure.observability.logging import configure_logging
 from kb_assistant.infrastructure.parsing import DocumentParserImpl
+from kb_assistant.infrastructure.rate_limit import RedisRateLimiter
 from kb_assistant.infrastructure.rerank import PineconeReranker
 from kb_assistant.infrastructure.resilience import CircuitBreaker
 from kb_assistant.infrastructure.security.jwt import JwtAccessTokenService, SigningKeys
@@ -161,6 +164,15 @@ def build_reranker(settings: RerankerSettings) -> tuple[Reranker | None, Closer 
     return reranker, reranker.aclose
 
 
+def chat_limits(settings: Settings) -> ChatLimits:
+    limits = settings.limits
+    return ChatLimits(
+        per_user=Limit(per_minute=limits.chat_user_per_minute, burst=limits.chat_user_burst),
+        per_tenant=Limit(per_minute=limits.chat_tenant_per_minute, burst=limits.chat_tenant_burst),
+        default_monthly_token_budget=limits.default_monthly_token_budget,
+    )
+
+
 def answer_policy(settings: RetrievalSettings) -> AnswerPolicy:
     return AnswerPolicy(
         top_k=settings.top_k,
@@ -205,6 +217,7 @@ class Container:
     reranker: Reranker | None
     answer_policy: AnswerPolicy
     answer_graph: Any = None
+    chat_guard: ChatGuard | None = None
     closers: list[Closer] = field(default_factory=list)
     startup_hooks: list[Closer] = field(default_factory=list)
 
@@ -241,6 +254,7 @@ class Container:
             policy=self.answer_policy,
             clock=self.clock,
             model_id=self.chat.model_id,
+            guard=self.chat_guard,
         )
 
     async def readiness(self) -> Readiness:
@@ -342,6 +356,7 @@ def build_container(
         startup_hooks=startup_hooks,
     )
     container.answer_graph = container.graph_for(container.answer_policy)
+    container.chat_guard = ChatGuard(RedisRateLimiter(container.redis), chat_limits(settings))
     return container
 
 
