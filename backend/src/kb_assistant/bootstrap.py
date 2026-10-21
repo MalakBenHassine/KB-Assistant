@@ -221,6 +221,19 @@ class Container:
             finally:
                 await session.rollback()
 
+    def graph_for(self, policy: AnswerPolicy) -> Any:
+        """The answering graph wired to this container's adapters, under `policy`."""
+        return build_answer_graph(
+            GraphDeps(
+                embedder=self.embedder,
+                vectors=self.vectors,
+                hydrate=lambda ids, scope: hydrate(self.unit_of_work, ids, scope),
+                chat=self.chat,
+                reranker=self.reranker,
+                policy=policy,
+            )
+        )
+
     def ask(self) -> AskQuestion:
         return AskQuestion(
             uow_factory=self.unit_of_work,
@@ -328,16 +341,7 @@ def build_container(
         closers=closers,
         startup_hooks=startup_hooks,
     )
-    container.answer_graph = build_answer_graph(
-        GraphDeps(
-            embedder=container.embedder,
-            vectors=container.vectors,
-            hydrate=lambda ids, scope: hydrate(container.unit_of_work, ids, scope),
-            chat=container.chat,
-            reranker=container.reranker,
-            policy=container.answer_policy,
-        )
-    )
+    container.answer_graph = container.graph_for(container.answer_policy)
     return container
 
 

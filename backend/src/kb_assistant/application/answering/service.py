@@ -148,6 +148,26 @@ class PreparedQuestion:
     started: float = field(default_factory=time.perf_counter)
 
 
+def initial_state(
+    *,
+    request_id: str,
+    scope: RetrievalScope,
+    question: str,
+    conversation_summary: str | None,
+) -> GraphState:
+    """The graph's input; the API and the evaluation both start from it."""
+    return {
+        "request_id": request_id,
+        "scope": scope,
+        "question": question,
+        "conversation_summary": conversation_summary,
+        "retry_count": 0,
+        "llm_calls": 0,
+        "node_timings_ms": {},
+        "token_usage": TokenUsage(),
+    }
+
+
 def citation_payload(citation: Citation) -> dict[str, Any]:
     return {
         "alias": citation.alias,
@@ -220,16 +240,12 @@ class AskQuestion:
     async def stream(self, prepared: PreparedQuestion) -> AsyncIterator[AnswerEvent]:
         answer_id = MessageId(new_id())
         yield AnswerEvent("meta", {"message_id": str(answer_id), "request_id": prepared.request_id})
-        initial: GraphState = {
-            "request_id": prepared.request_id,
-            "scope": prepared.scope,
-            "question": prepared.question,
-            "conversation_summary": prepared.conversation.summary,
-            "retry_count": 0,
-            "llm_calls": 0,
-            "node_timings_ms": {},
-            "token_usage": TokenUsage(),
-        }
+        initial = initial_state(
+            request_id=prepared.request_id,
+            scope=prepared.scope,
+            question=prepared.question,
+            conversation_summary=prepared.conversation.summary,
+        )
         final: dict[str, Any] = dict(initial)
         try:
             async for mode, payload in self._graph.astream(
