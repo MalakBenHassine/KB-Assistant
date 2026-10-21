@@ -7,6 +7,12 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Evaluation: a 30-document corpus (2 tenants, 3 departments, conflicting values
+  across tenants), 86 questions with their askers (answerable, restricted,
+  unanswerable, out of scope, chitchat), hit@k, MRR, answer accuracy, citation
+  precision, lexical faithfulness, abstention accuracy and leak counts, threshold
+  calibration, Markdown and JSON reports, and a CI quality gate (`make eval`).
+
 - Question answering: a LangGraph workflow (classify, rewrite, retrieve within
   the caller's scope, grade, bounded retry, rerank, generate, validate citations,
   clarify or abstain), sentence-level citation checking, nonce-delimited sources,
@@ -37,3 +43,7 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   gate, image scans, compose smoke test), security workflow (gitleaks, Trivy,
   dependency review, CodeQL) and CD (signed multi-arch images, Vercel deploy).
 - Architecture document, threat model, deployment guide, ADRs 0001–0014.
+
+### Changed
+- `retrieval.min_score` defaults to the calibrated 0.07 instead of the 0.2
+  placeholder, which refused 9 % of answerable questions on the evaluation set.

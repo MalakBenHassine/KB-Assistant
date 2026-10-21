@@ -8,9 +8,10 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 3 of 7 done. Employees can ask questions and get answers
-streamed sentence by sentence, each sentence cited, drawn only from what they
-may read. Evaluation and threshold calibration are next.
+**Status:** Phase 4 of 7 done. Employees ask questions and get cited answers
+drawn only from what they may read; every pull request is measured on an
+86-question evaluation set and blocked if quality drops or anything leaks.
+Enterprise features (feedback, analytics, limits) are next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -60,6 +61,19 @@ may read. Evaluation and threshold calibration are next.
   evidence, retries once, then answers with citations, asks for clarification
   or says it doesn't know. Every sentence must cite a retrieved source or it is
   dropped before the user sees it.
+- **Quality measured, thresholds calibrated, regressions blocked.** 86 questions,
+  each with its asker, over 30 documents from two tenants that disagree on
+  purpose (25 vs 22 days of leave). The gate checks hit@k, MRR, answer accuracy,
+  citation precision, abstention and leaks on every pull request, and
+  `min_score` is the measured middle of its best interval, not a guess
+  ([EVALUATION.md](docs/EVALUATION.md)).
+
+  | hit@5 | MRR | Answer accuracy | Abstention accuracy | Leaked chunks |
+  |---|---|---|---|---|
+  | 100 % | 0.991 | 94.4 % | 98.8 % | 0 |
+
+  *Offline profile (lexical embedder, extractive model): a pipeline baseline,
+  not a claim about a hosted model.*
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
   stand in for Pinecone and OpenAI, behind the same ports and contract tests.
 
@@ -100,6 +114,7 @@ has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
 ```bash
 make install   # backend and web dependencies, git hooks
 make check     # everything CI runs: format, lint, mypy --strict, import contracts, tests, coverage gate
+make eval      # the evaluation set and its quality gate; report in eval/reports/
 ```
 
 The backend tests start real PostgreSQL and Redis containers (testcontainers)
@@ -112,8 +127,10 @@ as in production.
   request sequence, the three isolation checks, ingestion, data model.
 - [Security and threat model](docs/SECURITY.md): twelve threats, their
   mitigations, and the test that proves each one.
+- [Evaluation](docs/EVALUATION.md): dataset, metric definitions, threshold
+  calibration, baseline, the gate, and what the numbers do not prove.
 - [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
-- [Architecture Decision Records](docs/adr/README.md): fourteen decisions, each
+- [Architecture Decision Records](docs/adr/README.md): sixteen decisions, each
   with the options weighed and when to revisit it.
 
 ## Stack
@@ -131,8 +148,8 @@ locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana
 | 1 | Foundations: auth, tenancy, RLS, compose stack, CI/CD | Done |
 | 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Done |
 | 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Done |
-| 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Next |
-| 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | — |
+| 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Done |
+| 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | Next |
 | 6 | Frontend: chat with citations, document management, dashboard | — |
 | 7 | Production readiness: Helm, tracing, dashboards, load test | — |
 

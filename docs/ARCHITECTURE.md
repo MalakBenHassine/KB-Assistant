@@ -21,7 +21,7 @@ not there.
 | # | Goal | What it means concretely | How it is proven |
 |---|------|--------------------------|------------------|
 | 1 | **Isolation** | A chunk the caller may not read never reaches the LLM prompt. | Security tests assert on the arguments of the vector-store call and on the hydrated chunks, not on the answer text. |
-| 2 | **Groundedness** | Every sentence of an answer is backed by a retrieved, cited chunk, or the system abstains. | Faithfulness, citation precision and abstention correctness in the eval gate (Phase 4). |
+| 2 | **Groundedness** | Every sentence of an answer is backed by a retrieved, cited chunk, or the system abstains. | Faithfulness, citation precision and abstention correctness in the eval gate ([EVALUATION.md](EVALUATION.md)). |
 | 3 | **Traceability** | Any answer can be explained after the fact: which chunks, which scores, which models, how long. | `messages` row + OpenTelemetry trace + LLM trace share one `request_id`. |
 | 4 | **Replaceability** | The LLM, the embedding model and the vector store can be swapped without touching use cases. | Contract tests run the same suite against the Pinecone and pgvector adapters. |
 | 5 | **Operability** | Failures are visible, bounded and recoverable. | Timeouts, retries, circuit breaker, health/readiness probes, RED metrics, dashboards. |
@@ -310,11 +310,14 @@ to the Responses API (`gpt-5.6-terra` by default, configurable).
 ### 5.7 Thresholds
 
 `retrieval.min_score`, `retrieval.top_k`, `retrieval.rerank_top_n` and
-`graph.max_retries` live in configuration with **uncalibrated placeholder values**
-until Phase 4. Cosine scores of `text-embedding-3-small` fall in a narrow band,
-so a threshold borrowed from a blog post would be meaningless. The calibration
-method (sweep over the eval set, pick the threshold that maximizes abstention
-correctness subject to a hit@k floor) will be documented in `docs/EVALUATION.md`.
+`graph.max_retries` live in configuration (`KB_RETRIEVAL__*`). Cosine scores
+mean different things for different embedding models, so `min_score` is
+measured, not borrowed: `make eval` sweeps it over the evaluation set and picks
+the middle of the widest interval of best abstention accuracy (0.07 for the
+offline embedder; a hosted embedder needs its own run). The gate rejects a
+configured value outside that interval. `top_k` and `rerank_top_n` are bounds
+the current eval set cannot distinguish. Method, curve and limits:
+[EVALUATION.md](EVALUATION.md), [ADR-0016](adr/0016-gate-merges-on-a-versioned-evaluation-set.md).
 Every message row stores the threshold values that were in effect, so a change
 shows up in the data.
 
