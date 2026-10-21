@@ -102,13 +102,19 @@ class GraphState(TypedDict, total=False):
     token_usage: Annotated[TokenUsage, operator.add]
 
 
+# Calibrated on the evaluation set for the default embedder (docs/EVALUATION.md):
+# the middle of the interval where abstention accuracy is best. Scores are not
+# comparable across embedding models, so another model needs its own value.
+CALIBRATED_MIN_SCORE = 0.07
+
+
 @dataclass(frozen=True, slots=True)
 class AnswerPolicy:
-    """Values live in configuration; Phase 4 calibrates them on the eval set."""
+    """Values live in configuration (`KB_RETRIEVAL__*`); see docs/EVALUATION.md."""
 
     top_k: int = 20
     rerank_top_n: int = 6
-    min_score: float = 0.2
+    min_score: float = CALIBRATED_MIN_SCORE
     max_retries: int = 1
     llm_relevance_check: bool = False
     max_llm_calls: int = 6

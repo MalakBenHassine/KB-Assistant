@@ -13,6 +13,8 @@ from typing import Literal
 from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from kb_assistant.application.answering.graph import CALIBRATED_MIN_SCORE
+
 
 class DatabaseSettings(BaseModel):
     # Connects as the application role, which does not own the tables and is
@@ -126,11 +128,12 @@ class LLMSettings(BaseModel):
 
 
 class RetrievalSettings(BaseModel):
-    """Placeholders until Phase 4 calibrates them on the evaluation set (ARCHITECTURE §5.7)."""
+    """`min_score` is calibrated by `make eval` (docs/EVALUATION.md); recalibrate it
+    when the embedding model changes. The others are bounds, not tuned values."""
 
     top_k: int = Field(default=20, ge=1, le=100)
     rerank_top_n: int = Field(default=6, ge=1, le=20)
-    min_score: float = Field(default=0.2, ge=-1.0, le=1.0)
+    min_score: float = Field(default=CALIBRATED_MIN_SCORE, ge=-1.0, le=1.0)
     max_retries: int = Field(default=1, ge=0, le=3)
     llm_relevance_check: bool = False
     max_llm_calls: int = Field(default=6, ge=2, le=20)
