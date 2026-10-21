@@ -147,7 +147,8 @@ worst outcome is a misleading answer to the person who asked, not a breach.
   `test_the_evaluation_corpus_loses_only_the_planted_paragraph` (false-positive
   guard), `test_ordinary_company_text_is_left_alone`.
 - `test_document_cannot_close_its_delimiter`.
-- `test_renderer_strips_images_and_external_links` (frontend).
+- Rendering: answers are rendered as text, never HTML or Markdown; citation
+  markers become buttons (`web/src/lib/citations.test.ts` checks markup stays text).
 
 ### T3. Privilege escalation — L2 · I3 · **P6**
 
@@ -194,8 +195,12 @@ replayed; CSRF against the cookie-authenticated BFF.
   an `Origin` check.
 - A strict Content-Security-Policy with nonces; no `dangerouslySetInnerHTML`.
 
-*Tests.* `test_refresh_token_reuse_revokes_family`,
-`test_bff_rejects_cross_origin_post`, `test_cookies_are_host_prefixed_httponly_secure`.
+*Tests.* `test_refresh_token_reuse_revokes_family`; in the web app,
+`isSameOriginRequest` and `contentSecurityPolicy` (`web/src/lib/security.test.ts`);
+against the running stack, `scripts/bff-smoke.sh` (CI): nonce CSP, redirect,
+`HttpOnly` cookies with no token in any body, cross-origin `403`, streamed answer.
+Cookie scopes and the single-flight refresh:
+[ADR-0020](adr/0020-render-every-page-per-request-for-a-nonce-based-csp.md).
 
 ### T5. Personal data in logs and traces (OWASP LLM02) — L3 · I2 · **P6**
 
@@ -328,7 +333,7 @@ a contractual risk more than a technical one, and it is documented as such.
 | 3 | `RetrievalScope`, three enforcement points, prompt delimiters, citation validation, the isolation test suite |
 | 4 | Injection case in the eval set, quarantine of instruction-like passages, abstention correctness gate |
 | 5 | Rate limits, budgets, audit log hash chain and verification, formula-safe audit export (retention jobs moved to Phase 7) |
-| 6 | CSP, safe markdown rendering, BFF cookies and CSRF |
+| 6 | Nonce CSP on every page, text-only answer rendering, BFF cookies scoped by path, single-flight refresh, origin check, open-redirect guard on login |
 | 7 | NetworkPolicies, non-root read-only containers, Secrets management, SBOM |
 
 ## 5. Residual risks (accepted, with reasons)

@@ -7,6 +7,14 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Web app: sign-in, chat with answers streamed sentence by sentence and
+  numbered sources (document, headings, pages), department filter, feedback,
+  conversation list and organization switcher; document upload with indexing
+  status and quarantine warnings; administration with analytics, a daily
+  chart, knowledge gaps, the monthly budget and the audit log (verify, CSV).
+  Next.js BFF with path-scoped `HttpOnly` cookies, single-flight refresh,
+  origin checks and a per-response nonce CSP (ADR-0020); `make demo` loads the
+  evaluation corpus into the demo tenants; CI drives the BFF end to end.
 - Governance: feedback on answers (one rating per person, reasons, comment);
   rate limits per user and per tenant (Redis token bucket, 429 with
   Retry-After); monthly token budgets and usage per tenant; analytics with

@@ -8,10 +8,11 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 5 of 7 done. Employees ask questions and get cited answers
-drawn only from what they may read; every pull request is measured on an
-88-question evaluation set; admins get analytics, knowledge gaps, budgets
-and a tamper-evident audit log. The chat interface is next.
+**Status:** Phase 6 of 7 done. A web app where employees ask questions and
+get cited answers streamed sentence by sentence, drawn only from what they may
+read; admins manage documents and see analytics, knowledge gaps, budgets and a
+tamper-evident audit log. Every pull request is measured on an 88-question
+evaluation set. Production readiness (Helm, tracing, dashboards) is next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -82,28 +83,29 @@ and a tamper-evident audit log. The chat interface is next.
   SHA-256 so an edited or deleted entry is located by `GET /v1/admin/audit-log/verify`
   ([ADR-0018](docs/adr/0018-rate-limits-in-redis-token-budgets-in-postgres.md),
   [ADR-0019](docs/adr/0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md)).
+- **A web app that keeps tokens out of the browser.** Next.js as a
+  backend-for-frontend: tokens live in `HttpOnly` cookies scoped by path, the
+  refresh is single-flight (the API revokes a session on refresh-token reuse),
+  every page carries a per-response CSP nonce, and answers are rendered as text
+  so a document can never inject markup
+  ([ADR-0020](docs/adr/0020-render-every-page-per-request-for-a-nonce-based-csp.md)).
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
   stand in for Pinecone and OpenAI, behind the same ports and contract tests.
 
 ## Run it
 
-Requirements: Docker with Compose, [uv](https://docs.astral.sh/uv/), `make`, `openssl`.
+Requirements: Docker with Compose, [uv](https://docs.astral.sh/uv/), `make`, `openssl`, `jq`.
 
 ```bash
 make up      # generates .env and a signing key on first run, builds, starts, waits until healthy
-make seed    # two companies (Acme, Globex), three departments each, seven users
+make demo    # two companies, three departments each, seven users, and 31 documents indexed
 ```
 
-Then open the API documentation at http://127.0.0.1:8000/docs, sign in, and
-upload a document with `POST /v1/documents`; its status moves from `pending`
-to `indexed` within seconds. Then create a conversation and ask:
-
-```bash
-curl -N http://127.0.0.1:8000/v1/conversations/$CONVERSATION/messages \
-  -H "Authorization: Bearer $TOKEN" -H 'Accept: text/event-stream' \
-  -H 'content-type: application/json' -d '{"question": "How many days of leave do I get?"}'
-``` Every demo user
-has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
+Open http://localhost:3000 and sign in as one of the demo users below; the
+password is `KB_SEED_PASSWORD` in your generated `.env`. Ask Carol's question,
+"How many days of paid leave do I get?", then sign in as Alice to see the
+analytics, the knowledge gaps and the audit log. The API documentation is at
+http://127.0.0.1:8000/docs.
 
 | User | Company | Role | Departments |
 |------|---------|------|-------------|
@@ -115,7 +117,11 @@ has the password stored as `KB_SEED_PASSWORD` in your generated `.env`.
 | frank@globex.example | Globex | employee | engineering |
 | grace@consulting.example | Acme **and** Globex | employee / dept_admin | engineering / product |
 
-`make help` lists the other targets (`down`, `clean`, `logs`, `lint`, `test`, `check`).
+Everything runs offline by default: a lexical embedder and an extractive model
+that quotes sources. `KB_EMBEDDINGS_PROVIDER=openai`, `KB_LLM_PROVIDER=openai`
+and `OPENAI_API_KEY` in `.env` switch to the hosted models.
+
+`make help` lists the other targets (`down`, `clean`, `logs`, `lint`, `test`, `eval`, `check`).
 
 ## Develop
 
@@ -138,7 +144,7 @@ as in production.
 - [Evaluation](docs/EVALUATION.md): dataset, metric definitions, threshold
   calibration, baseline, the gate, and what the numbers do not prove.
 - [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
-- [Architecture Decision Records](docs/adr/README.md): nineteen decisions, each
+- [Architecture Decision Records](docs/adr/README.md): twenty decisions, each
   with the options weighed and when to revisit it.
 
 ## Stack
@@ -158,8 +164,8 @@ locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana
 | 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Done |
 | 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Done |
 | 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | Done |
-| 6 | Frontend: chat with citations, document management, dashboard | Next |
-| 7 | Production readiness: Helm, tracing, dashboards, load test | — |
+| 6 | Frontend: chat with citations, document management, dashboard | Done |
+| 7 | Production readiness: Helm, tracing, dashboards, load test | Next |
 
 ## License
 
