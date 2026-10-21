@@ -349,7 +349,7 @@ shows up in the data.
 | Role | Can read (chat) | Can manage documents | Can administer |
 |------|-----------------|----------------------|----------------|
 | `employee` | own departments | — | — |
-| `dept_admin` | own departments | own departments | analytics of own departments |
+| `dept_admin` | own departments | own departments | analytics of questions that searched own departments |
 | `tenant_admin` | all departments of the tenant | all departments | users, departments, audit log, analytics |
 
 The only constructor of `RetrievalScope` is
@@ -463,10 +463,11 @@ acceptable here. Authorization never relies on IDs being hard to guess.
 | `POST /v1/conversations` · `GET /v1/conversations` | any | Own conversations only |
 | `GET /v1/conversations/{id}/messages` | any | History with citations |
 | `POST /v1/conversations/{id}/messages` | any | SSE stream or JSON (§5.5); optional `department_ids` narrows the search |
-| `POST /v1/messages/{id}/feedback` | any | Own messages only |
+| `PUT /v1/messages/{id}/feedback` | any | Answers in own conversations only; one rating per person, replaced on re-rating |
 | `POST /v1/documents` · `POST /v1/documents/{id}/versions` · `GET /v1/documents` | `dept_admin`+ | Scoped to managed departments |
-| `GET /v1/admin/analytics/*` | `tenant_admin`, `dept_admin` (own departments) | |
-| `GET /v1/admin/audit-log` (+ CSV export) | `tenant_admin` | |
+| `GET /v1/admin/analytics?days=` | `tenant_admin`, `dept_admin` (own departments) | Volume, answer rate, abstentions by reason, satisfaction, latency, tokens, daily series, knowledge gaps |
+| `GET` · `PUT /v1/admin/settings` | `tenant_admin` | Monthly token budget and the month's usage ([ADR-0018](adr/0018-rate-limits-in-redis-token-budgets-in-postgres.md)) |
+| `GET /v1/admin/audit-log` · `/audit-log.csv` · `/audit-log/verify` | `tenant_admin` | Cursor pages, formula-safe CSV, hash-chain verification ([ADR-0019](adr/0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md)) |
 | `GET /healthz` · `GET /readyz` · `GET /metrics` | infrastructure | `/metrics` is not exposed through the ingress |
 
 Conventions: errors are RFC 7807 `application/problem+json`; another tenant's or
@@ -482,8 +483,9 @@ endpoints use cursor pagination.
 | Tracing | OpenTelemetry: API span → one span per graph node → vector store, LLM and DB spans. Langfuse receives LLM traces tagged with the same `request_id`. |
 | Metrics | RED per endpoint; `retrieval_grade_total{grade}`, `abstentions_total{reason}`, `llm_tokens_total{tenant,model,kind}`, `authz_hydration_rejections_total`, ingestion duration and failures. |
 | Resilience | Timeouts on every outbound call; `tenacity` retries with jitter on idempotent calls; a circuit breaker on the LLM turns an outage into a fast "temporarily unavailable" answer. |
-| Rate limiting and cost | Redis token buckets per user and per tenant; a monthly token budget per tenant, checked before calling the LLM. |
-| Retention | Conversations keep a rolling summary; raw messages expire after a configurable period per tenant; the audit log has its own, longer retention. |
+| Rate limiting and cost | Redis token buckets per user and per tenant (one Lua script, server clock, fail-open); a monthly token budget per tenant in Postgres, checked before a question is stored. `429` with `Retry-After` for both ([ADR-0018](adr/0018-rate-limits-in-redis-token-budgets-in-postgres.md)). |
+| Conversation memory | A rolling summary of the last three questions, built without a model call, feeds the classify, rewrite and answer prompts so follow-ups resolve; the first question titles the conversation. |
+| Retention | Planned for Phase 7 as a scheduled job run by a maintenance role: raw messages expire after a configurable period per tenant; the audit log has its own, longer retention. The API role cannot delete either. |
 
 ## 11. Deployment view (Phase 7)
 

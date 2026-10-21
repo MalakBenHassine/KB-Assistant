@@ -275,8 +275,12 @@ length; a bounded retry loop (`max_retries`); a hard cap on LLM calls per
 request; a monthly token budget per tenant checked before each call; per-tenant
 ingestion concurrency limits in the worker; the LLM circuit breaker.
 
-*Tests.* `test_rate_limit_returns_429_with_retry_after`,
-`test_graph_never_exceeds_max_llm_calls`, `test_budget_exhausted_blocks_generation`.
+*Tests.* `test_a_burst_of_questions_gets_429_with_retry_after`,
+`test_concurrent_requests_never_overspend_the_bucket`,
+`test_a_spent_budget_stops_questions_until_next_month`,
+`test_usage_increments_are_atomic`, `test_graph_never_exceeds_max_llm_calls`.
+Decision and trade-offs (fail-open on Redis loss):
+[ADR-0018](adr/0018-rate-limits-in-redis-token-budgets-in-postgres.md).
 
 ### T9. Enumeration and information disclosure — L2 · I1 · **P2**
 
@@ -297,8 +301,14 @@ lists names. *Proof:* CI jobs that fail the build.
 
 The application role can `INSERT` into `audit_log` but not `UPDATE` or `DELETE`
 it (Postgres grants). Each row stores a hash of the previous row's hash and its
-own content per tenant, so a deletion shows as a broken chain. *Test:*
-`test_app_role_cannot_update_audit_log`, `test_audit_chain_detects_deletion`.
+own content per tenant, so a deletion shows as a broken chain; tenant admins
+run the check with `GET /v1/admin/audit-log/verify`. Removing the *newest*
+entries needs the returned head hash kept outside the database to be detected
+([ADR-0019](adr/0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md)).
+*Tests:* `test_audit_log_is_append_only`,
+`test_a_row_deleted_by_the_database_owner_is_detected`,
+`test_a_row_edited_by_the_database_owner_is_detected`,
+`test_concurrent_writers_extend_one_unbroken_chain`.
 
 ### T12. Third-party data exposure — L1 · I2 · **P2**
 
@@ -317,7 +327,7 @@ a contractual risk more than a technical one, and it is documented as such.
 | 2 | Upload validation, parser hardening, worker network restrictions, idempotent and archived versions |
 | 3 | `RetrievalScope`, three enforcement points, prompt delimiters, citation validation, the isolation test suite |
 | 4 | Injection case in the eval set, quarantine of instruction-like passages, abstention correctness gate |
-| 5 | Rate limits, budgets, audit log hash chain, retention jobs |
+| 5 | Rate limits, budgets, audit log hash chain and verification, formula-safe audit export (retention jobs moved to Phase 7) |
 | 6 | CSP, safe markdown rendering, BFF cookies and CSRF |
 | 7 | NetworkPolicies, non-root read-only containers, Secrets management, SBOM |
 

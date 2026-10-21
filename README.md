@@ -8,10 +8,10 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** Phase 4 of 7 done. Employees ask questions and get cited answers
+**Status:** Phase 5 of 7 done. Employees ask questions and get cited answers
 drawn only from what they may read; every pull request is measured on an
-88-question evaluation set and blocked if quality drops or anything leaks.
-Enterprise features (feedback, analytics, limits) are next.
+88-question evaluation set; admins get analytics, knowledge gaps, budgets
+and a tamper-evident audit log. The chat interface is next.
 
 ## Why this is not another "chat with your PDF"
 
@@ -75,6 +75,13 @@ Enterprise features (feedback, analytics, limits) are next.
 
   *Offline profile (lexical embedder, extractive model): a pipeline baseline,
   not a claim about a hosted model.*
+- **Run like a product, not a demo.** Rate limits per user and tenant (Redis
+  token buckets, `429` + `Retry-After`), monthly token budgets per tenant,
+  feedback on every answer, analytics with **knowledge gaps** (the questions
+  your documents do not answer, most asked first), and an audit log chained by
+  SHA-256 so an edited or deleted entry is located by `GET /v1/admin/audit-log/verify`
+  ([ADR-0018](docs/adr/0018-rate-limits-in-redis-token-budgets-in-postgres.md),
+  [ADR-0019](docs/adr/0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md)).
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
   stand in for Pinecone and OpenAI, behind the same ports and contract tests.
 
@@ -131,7 +138,7 @@ as in production.
 - [Evaluation](docs/EVALUATION.md): dataset, metric definitions, threshold
   calibration, baseline, the gate, and what the numbers do not prove.
 - [Deployment](docs/DEPLOYMENT.md): the pipeline, one-time setup, verifying an image signature.
-- [Architecture Decision Records](docs/adr/README.md): seventeen decisions, each
+- [Architecture Decision Records](docs/adr/README.md): nineteen decisions, each
   with the options weighed and when to revisit it.
 
 ## Stack
@@ -150,8 +157,8 @@ locally) · OpenAI · SeaweedFS. Coming next: OpenTelemetry, Prometheus, Grafana
 | 2 | Ingestion pipeline: upload, parse, chunk, embed, versioning | Done |
 | 3 | Retrieval and the LangGraph workflow, SSE streaming, isolation tests | Done |
 | 4 | Evaluation: dataset, metrics, threshold calibration, CI gate | Done |
-| 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | Next |
-| 6 | Frontend: chat with citations, document management, dashboard | — |
+| 5 | Enterprise features: feedback, analytics, audit log viewer, memory, limits | Done |
+| 6 | Frontend: chat with citations, document management, dashboard | Next |
 | 7 | Production readiness: Helm, tracing, dashboards, load test | — |
 
 ## License

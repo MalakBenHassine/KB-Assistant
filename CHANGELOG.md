@@ -7,6 +7,13 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Governance: feedback on answers (one rating per person, reasons, comment);
+  rate limits per user and per tenant (Redis token bucket, 429 with
+  Retry-After); monthly token budgets and usage per tenant; analytics with
+  answer rate, abstentions by reason, satisfaction, latency, tokens, daily
+  series and knowledge gaps, scoped for department admins; a hash-chained
+  audit log with paging, verification and formula-safe CSV export;
+  conversation memory and automatic titles (migration 0005, ADR-0018, ADR-0019).
 - Evaluation: a 30-document corpus (2 tenants, 3 departments, conflicting values
   across tenants), 86 questions with their askers (answerable, restricted,
   unanswerable, out of scope, chitchat), hit@k, MRR, answer accuracy, citation
