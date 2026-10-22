@@ -1,8 +1,8 @@
 """Scheduled maintenance, run by the operator role, never by the API (Helm CronJobs).
 
 - `purge_expired_messages`: deletes questions and answers older than the
-  retention period (feedback goes with them), and records one audit entry per
-  tenant with the count. Conversations stay, with their rolling summary.
+  retention period (feedback goes with them), and the conversations left
+  empty, and records one audit entry per tenant with the counts.
 - `audit_heads`: the newest entry of every tenant's audit chain, as JSON lines
   for the log pipeline to keep in write-once storage. Comparing a stored head
   with the table later detects the one tampering the chain cannot: removing
@@ -54,13 +54,26 @@ async def purge_expired_messages(
                 {"t": tenant, "cutoff": cutoff},
             )
             count = int(getattr(result, "rowcount", 0) or 0)
-            if count:
+            # A conversation left with no message is noise in the sidebar.
+            emptied = await session.execute(
+                text(
+                    "DELETE FROM conversations c WHERE c.tenant_id = :t AND c.updated_at < :cutoff"
+                    " AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)"
+                ),
+                {"t": tenant, "cutoff": cutoff},
+            )
+            conversations = int(getattr(emptied, "rowcount", 0) or 0)
+            if count or conversations:
                 await uow.audit.record(
                     AuditEvent(
                         tenant_id=TenantId(tenant),
                         action="retention.messages_purged",
                         actor_user_id=None,
-                        details={"messages": count, "older_than_days": older_than_days},
+                        details={
+                            "messages": count,
+                            "conversations": conversations,
+                            "older_than_days": older_than_days,
+                        },
                     )
                 )
             await uow.commit()

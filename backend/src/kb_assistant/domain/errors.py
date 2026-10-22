@@ -56,6 +56,15 @@ class PolicyViolationError(DomainError):
     code = "policy_violation"
 
 
+class DemoReadOnlyError(ForbiddenError):
+    """The public demo refuses changes, so every visitor sees the same data."""
+
+    code = "demo_read_only"
+
+    def __init__(self) -> None:
+        super().__init__("This is a read-only demo: you can sign in and ask questions.")
+
+
 class RateLimitedError(DomainError):
     """Too many questions in a short time (SECURITY.md T8)."""
 

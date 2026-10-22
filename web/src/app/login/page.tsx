@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DemoAccounts } from "@/components/demo-accounts";
 import { LoginForm } from "@/components/login-form";
 
 export const metadata: Metadata = { title: "Sign in · KB Assistant" };
@@ -40,6 +41,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             </p>
           </div>
           <LoginForm next={typeof next === "string" ? next : undefined} />
+          <DemoAccounts />
         </section>
       </div>
     </main>

@@ -3,8 +3,9 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from kb_assistant.api.demo import demo_guard
 from kb_assistant.api.errors import install_error_handlers
 from kb_assistant.api.middleware import RequestContextMiddleware
 from kb_assistant.api.routers import (
@@ -38,6 +39,8 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
         title="KB Assistant API",
         version="0.1.0",
         lifespan=lifespan,
+        # Before every route: refuses changes when the public demo is read-only.
+        dependencies=[Depends(demo_guard)],
         docs_url="/docs" if docs else None,
         redoc_url=None,
         openapi_url="/openapi.json" if docs else None,

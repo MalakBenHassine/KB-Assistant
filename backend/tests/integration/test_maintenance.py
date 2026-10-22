@@ -17,6 +17,8 @@ NOW = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
 async def _conversation_with_messages(
     owner_engine: AsyncEngine, seeder: Seeder, ages_days: list[int]
 ) -> TenantId:
+    # As in the application, the conversation was last updated by its newest message.
+    last = NOW - timedelta(days=min(ages_days))
     tenant = await seeder.tenant()
     member = await seeder.member(tenant)
     conversation = new_id()
@@ -26,7 +28,7 @@ async def _conversation_with_messages(
                 "INSERT INTO conversations (id, tenant_id, membership_id, title, created_at,"
                 " updated_at) VALUES (:id, :t, :m, 'c', :now, :now)"
             ),
-            {"id": conversation, "t": tenant, "m": member.membership_id, "now": NOW},
+            {"id": conversation, "t": tenant, "m": member.membership_id, "now": last},
         )
         for age in ages_days:
             await conn.execute(
@@ -59,7 +61,8 @@ async def test_old_messages_are_purged_and_the_purge_is_audited(
             {"t": tenant},
         )
     assert left == 1
-    assert details == {"messages": 2, "older_than_days": 365}
+    # The conversation keeps its recent message, so it is not deleted.
+    assert details == {"messages": 2, "conversations": 0, "older_than_days": 365}
 
 
 async def test_a_retention_below_one_day_is_refused(owner_engine: AsyncEngine) -> None:
@@ -77,3 +80,17 @@ async def test_audit_heads_are_the_newest_entry_of_each_tenant(
     assert head["event"] == "audit.head"
     assert head["seq"] == 1
     assert len(head["hash"]) == 64
+
+
+async def test_a_conversation_left_empty_is_purged_with_its_messages(
+    owner_engine: AsyncEngine, seeder: Seeder
+) -> None:
+    """The nightly reset of the public demo: old conversations disappear entirely."""
+    tenant = await _conversation_with_messages(owner_engine, seeder, [3, 2])
+    purged = await purge_expired_messages(owner_engine, older_than_days=1, now=NOW)
+    assert {p.tenant_id: p.messages for p in purged}[tenant] == 2
+    async with owner_engine.connect() as conn:
+        left = await conn.scalar(
+            text("SELECT count(*) FROM conversations WHERE tenant_id = :t"), {"t": tenant}
+        )
+    assert left == 0

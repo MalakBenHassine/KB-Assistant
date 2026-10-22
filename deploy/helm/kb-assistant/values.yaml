@@ -67,6 +67,9 @@ worker:
 
 web:
   replicas: 2
+  # Public demo only: a Secret whose KB_SEED_PASSWORD is shown on the sign-in
+  # page. Pair it with config.KB_DEMO__READ_ONLY: "true".
+  demoCredentialsSecret: ""
   resources:
     requests: { cpu: 100m, memory: 192Mi }
     limits: { memory: 384Mi }

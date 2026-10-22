@@ -31,6 +31,12 @@ spec:
             # Server-side only: the browser never learns where the API is (ADR-0008).
             - name: KB_API_URL
               value: http://{{ include "kb.fullname" . }}-api:8000
+            {{- with .Values.web.demoCredentialsSecret }}
+            # Public demo only: the shared password is shown on the sign-in page.
+            - name: KB_DEMO_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ . }}, key: KB_SEED_PASSWORD }
+            {{- end }}
           ports:
             - { name: http, containerPort: 3000 }
           readinessProbe:

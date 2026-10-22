@@ -195,6 +195,9 @@
               "maximum": 100
             }
           }
+        },
+        "demoCredentialsSecret": {
+          "type": "string"
         }
       }
     },

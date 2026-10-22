@@ -168,6 +168,13 @@ class RerankerSettings(BaseModel):
         return self
 
 
+class DemoSettings(BaseModel):
+    """A public demo with shared accounts (deploy/oracle/README.md)."""
+
+    # Refuse every state change except signing in and asking (api/demo.py).
+    read_only: bool = False
+
+
 class _ProcessSettings(BaseSettings):
     """What every process needs: the API, the worker and the CLI."""
 
@@ -200,6 +207,7 @@ class Settings(_ProcessSettings):
     retrieval: RetrievalSettings = RetrievalSettings()
     reranker: RerankerSettings = RerankerSettings()
     limits: LimitsSettings = LimitsSettings()
+    demo: DemoSettings = DemoSettings()
     # Number of reverse proxies in front of the API whose X-Forwarded-For we trust.
     trusted_proxy_hops: int = Field(default=0, ge=0, le=3)
 
