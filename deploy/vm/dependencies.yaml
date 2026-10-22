@@ -27,6 +27,9 @@ spec:
     metadata:
       labels: { app: postgres }
     spec:
+      # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
+      # its -s3.port flag and crashes on it. Services are found through DNS.
+      enableServiceLinks: false
       containers:
         - name: postgres
           image: pgvector/pgvector:0.8.7-pg17
@@ -81,6 +84,9 @@ spec:
     metadata:
       labels: { app: redis }
     spec:
+      # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
+      # its -s3.port flag and crashes on it. Services are found through DNS.
+      enableServiceLinks: false
       containers:
         - name: redis
           image: redis:8-alpine
@@ -126,6 +132,9 @@ spec:
     metadata:
       labels: { app: s3 }
     spec:
+      # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
+      # its -s3.port flag and crashes on it. Services are found through DNS.
+      enableServiceLinks: false
       containers:
         - name: seaweedfs
           # S3-compatible storage (ADR-0015); the same image as the compose stack.
