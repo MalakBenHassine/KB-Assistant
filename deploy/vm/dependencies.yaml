@@ -3,7 +3,9 @@
 # managed services; here they run in their own namespace, outside the
 # application's restricted one, with data on the node's local-path volumes.
 #
-# Credentials come from the `kb-deps` Secret created by bootstrap.sh.
+# Credentials come from the `kb-deps` Secret created by bootstrap.sh. Each runs
+# as its image's non-root user with a read-only root filesystem and no
+# capabilities, like the application (checked by Trivy in the Security workflow).
 apiVersion: v1
 kind: Service
 metadata:
@@ -30,6 +32,12 @@ spec:
       # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
       # its -s3.port flag and crashes on it. Services are found through DNS.
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: postgres
           image: pgvector/pgvector:0.8.7-pg17
@@ -43,6 +51,10 @@ spec:
             - name: KB_APP_DB_PASSWORD
               valueFrom: { secretKeyRef: { name: kb-deps, key: KB_APP_DB_PASSWORD } }
           ports: [{ name: postgres, containerPort: 5432 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
           readinessProbe:
             exec: { command: [pg_isready, -U, kb_owner, -d, kb] }
             periodSeconds: 5
@@ -52,9 +64,15 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /var/lib/postgresql/data }
             - { name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+            - { name: run, mountPath: /var/run/postgresql }
+            - { name: tmp, mountPath: /tmp }
       volumes:
         - name: init
           configMap: { name: postgres-init }
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:
@@ -87,6 +105,12 @@ spec:
       # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
       # its -s3.port flag and crashes on it. Services are found through DNS.
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: redis
           image: redis:8-alpine
@@ -95,6 +119,10 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom: { secretKeyRef: { name: kb-deps, key: REDIS_PASSWORD } }
           ports: [{ name: redis, containerPort: 6379 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
           readinessProbe:
             tcpSocket: { port: redis }
             periodSeconds: 5
@@ -135,6 +163,12 @@ spec:
       # No legacy {SERVICE}_PORT=tcp://... variables: SeaweedFS reads S3_PORT as
       # its -s3.port flag and crashes on it. Services are found through DNS.
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: seaweedfs
           # S3-compatible storage (ADR-0015); the same image as the compose stack.
@@ -146,6 +180,10 @@ spec:
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom: { secretKeyRef: { name: kb-deps, key: AWS_SECRET_ACCESS_KEY } }
           ports: [{ name: s3, containerPort: 8333 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
           readinessProbe:
             tcpSocket: { port: s3 }
             periodSeconds: 5
@@ -154,6 +192,10 @@ spec:
             limits: { memory: 512Mi }
           volumeMounts:
             - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:
