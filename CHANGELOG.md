@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-22
+
 ### Added
 - A free public demo: read-only demo mode for the API (`KB_DEMO__READ_ONLY`, an
   allowlist of the writes a visitor needs), demo accounts on the sign-in page,
@@ -83,3 +85,6 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - `retrieval.min_score` defaults to the calibrated 0.07 instead of the 0.2
   placeholder, which refused 9 % of answerable questions on the evaluation set.
+
+[Unreleased]: https://github.com/MalakBenHassine/KB-Assistant/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/MalakBenHassine/KB-Assistant/releases/tag/v1.0.0

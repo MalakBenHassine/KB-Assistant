@@ -8,12 +8,13 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status:** all seven phases done. A web app where employees ask questions and
-get cited answers streamed sentence by sentence, drawn only from what they may
+**Status: v1.0.0, complete.** A web app where employees ask questions and get
+cited answers streamed sentence by sentence, drawn only from what they may
 read; admins manage documents and see analytics, knowledge gaps, budgets and a
 tamper-evident audit log. Every pull request is measured on an 88-question
-evaluation set; the system ships as signed images and a hardened Helm chart,
-with metrics, traces, alerts, a runbook and a load test.
+evaluation set; every merge publishes signed images; the Helm chart is verified
+on a real k3s cluster. What is *not* proven is listed under
+[Known limits](#known-limits).
 
 ## Why this is not another "chat with your PDF"
 
@@ -44,7 +45,7 @@ with metrics, traces, alerts, a runbook and a load test.
 - **A hexagonal codebase, enforced.** Import contracts in CI keep frameworks and
   vendor SDKs out of the business rules.
 - **A delivery pipeline you could audit.** Actions pinned by SHA, multi-arch
-  images with SBOM and provenance, signed with cosign keyless, deployed only
+  images with SBOM and provenance, signed with cosign keyless, published only
   after CI is green.
 
 - **Ingestion that is safe to retry.** Uploads are typed by their bytes, not
@@ -132,11 +133,41 @@ and `OPENAI_API_KEY` in `.env` switch to the hosted models.
 
 `make help` lists the other targets (`down`, `clean`, `logs`, `lint`, `test`, `eval`, `check`).
 
+## Deploy
+
+| Where | How | State |
+|---|---|---|
+| Laptop | Docker Compose (`make up && make demo`) | the development stack; CI starts it on every push and drives the web app end to end |
+| Container registry | GitHub Actions after a green CI on `main` | multi-arch images (amd64, arm64) on GHCR, signed with cosign, with SBOM and provenance |
+| Kubernetes | Helm chart (`deploy/helm/kb-assistant`), `helm upgrade --install` | **verified on k3s** (Kubernetes 1.36) on a single VM: restricted Pod Security, default-deny NetworkPolicies, migration hook, TLS ingress ([`deploy/vm`](deploy/vm/README.md)) |
+| Public demo | Oracle Cloud Always Free, DuckDNS, Let's Encrypt, read-only demo mode | written and validated in CI ([`deploy/oracle`](deploy/oracle/README.md)), not running |
+
+Deployment to a cluster is a manual `helm upgrade`; a GitOps controller that
+verifies image signatures before pulling (Flux) is the next step
+([DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+
+## Known limits
+
+- **OpenAI and Pinecone are implemented, not exercised.** Their adapters are
+  unit-tested against fakes, and the vector-store contract tests run against
+  Pinecone when a key is set; no key was used. Everything that ran, locally, in
+  CI and on k3s, used pgvector and the offline models.
+- **The quality numbers measure the pipeline, not a language model.** The
+  offline profile matches words, not meaning, and its extractive model quotes
+  sentences instead of writing answers; a hosted model needs its own
+  evaluation run and threshold calibration ([EVALUATION.md](docs/EVALUATION.md) §5).
+- **No OCR**: a scanned PDF has no text to index and fails with a clear error.
+- **Upload only**: connectors to SharePoint or Drive sit behind a port and are
+  not written ([ADR-0013](docs/adr/0013-upload-first-connectors-behind-a-source-port.md)).
+- **English evaluation set**: the pipeline handles other languages; the
+  evaluation set does not test them.
+
 ## Develop
 
 ```bash
 make install   # backend and web dependencies, git hooks
-make check     # everything CI runs: format, lint, mypy --strict, import contracts, tests, coverage gate
+make check     # format, lint, mypy --strict, import contracts, tests, coverage gate, evaluation
+make chart     # lint, render and validate the Helm chart (needs helm and kubeconform)
 make eval      # the evaluation set and its quality gate; report in eval/reports/
 ```
 
@@ -163,8 +194,9 @@ as in production.
 
 Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · PostgreSQL
 with row-level security · Redis · Celery · Next.js 16 · TypeScript · Tailwind ·
-Docker · GitHub Actions · cosign · Trivy · CodeQL · LangGraph · Pinecone (pgvector
-locally) · OpenAI · SeaweedFS · OpenTelemetry · Prometheus · Grafana · Helm · k6.
+Docker · GitHub Actions · cosign · Trivy · CodeQL · LangGraph · pgvector (Pinecone
+adapter) · OpenAI adapter · SeaweedFS · OpenTelemetry · Prometheus · Grafana ·
+Helm · k3s · k6.
 
 ## Roadmap
 
