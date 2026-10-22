@@ -1,0 +1,152 @@
+# PostgreSQL (pgvector), Redis and SeaweedFS for a single-node k3s test
+# environment (deploy/vm/bootstrap.sh applies this). In production these are
+# managed services; here they run in their own namespace, outside the
+# application's restricted one, with data on the node's local-path volumes.
+#
+# Credentials come from the `kb-deps` Secret created by bootstrap.sh.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: kb-deps
+spec:
+  selector: { app: postgres }
+  ports: [{ name: postgres, port: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: kb-deps
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:0.8.7-pg17
+          env:
+            - { name: POSTGRES_USER, value: kb_owner }
+            - { name: POSTGRES_DB, value: kb }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: kb-deps, key: POSTGRES_PASSWORD } }
+            # Read by the init script, which creates the non-owner application role.
+            - name: KB_APP_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: kb-deps, key: KB_APP_DB_PASSWORD } }
+          ports: [{ name: postgres, containerPort: 5432 }]
+          readinessProbe:
+            exec: { command: [pg_isready, -U, kb_owner, -d, kb] }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+      volumes:
+        - name: init
+          configMap: { name: postgres-init }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 5Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: kb-deps
+spec:
+  selector: { app: redis }
+  ports: [{ name: redis, port: 6379 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: kb-deps
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:8-alpine
+          args: ["--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "yes"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: kb-deps, key: REDIS_PASSWORD } }
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe:
+            tcpSocket: { port: redis }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3
+  namespace: kb-deps
+spec:
+  selector: { app: s3 }
+  ports: [{ name: s3, port: 8333 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: s3
+  namespace: kb-deps
+spec:
+  serviceName: s3
+  replicas: 1
+  selector:
+    matchLabels: { app: s3 }
+  template:
+    metadata:
+      labels: { app: s3 }
+    spec:
+      containers:
+        - name: seaweedfs
+          # S3-compatible storage (ADR-0015); the same image as the compose stack.
+          image: chrislusf/seaweedfs:4.48
+          args: ["server", "-s3", "-dir=/data"]
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: { secretKeyRef: { name: kb-deps, key: AWS_ACCESS_KEY_ID } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: kb-deps, key: AWS_SECRET_ACCESS_KEY } }
+          ports: [{ name: s3, containerPort: 8333 }]
+          readinessProbe:
+            tcpSocket: { port: s3 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 5Gi } }

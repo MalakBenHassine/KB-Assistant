@@ -4,12 +4,16 @@
 # file it already has (same checksum) and returns the existing document.
 #
 #   scripts/load-demo-corpus.sh            # API on 127.0.0.1:${KB_API_PORT:-8000}
+#   API_URL=... KB_SEED_PASSWORD=... scripts/load-demo-corpus.sh   # any other API
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-# shellcheck disable=SC1091
-source .env
-api="http://127.0.0.1:${KB_API_PORT:-8000}"
+if [ -f .env ]; then
+  # shellcheck disable=SC1091
+  source .env
+fi
+api="${API_URL:-http://127.0.0.1:${KB_API_PORT:-8000}}"
+: "${KB_SEED_PASSWORD:?set KB_SEED_PASSWORD (or create .env with make env)}"
 declare -A admins=([acme]="alice@acme.example" [globex]="erin@globex.example")
 
 for tenant in acme globex; do

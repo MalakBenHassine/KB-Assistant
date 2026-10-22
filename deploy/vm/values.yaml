@@ -1,0 +1,54 @@
+# Chart values for the single-node k3s test environment (deploy/vm/README.md).
+# Offline models, one replica of each, dependencies from deploy/vm/dependencies.yaml.
+
+images:
+  backend:
+    repository: ghcr.io/malakbenhassine/kb-assistant-backend
+    tag: main
+  web:
+    repository: ghcr.io/malakbenhassine/kb-assistant-web
+    tag: main
+  # `main` moves with every merge: always pull it. Pin digests for anything shared.
+  pullPolicy: Always
+
+config:
+  KB_ENVIRONMENT: staging
+  KB_LOG_LEVEL: INFO
+  KB_AUTH__KEY_ID: vm-1
+  KB_STORAGE__BUCKET: kb-documents
+  KB_STORAGE__ENDPOINT_URL: http://s3.kb-deps.svc.cluster.local:8333
+  KB_STORAGE__REGION: us-east-1
+  KB_STORAGE__CREATE_BUCKET: "true"
+  KB_EMBEDDINGS__PROVIDER: hashing
+  KB_LLM__PROVIDER: extractive
+  KB_VECTOR_STORE__PROVIDER: pgvector
+  KB_RETRIEVAL__MIN_SCORE: "0.07"
+
+api:
+  replicas: 1
+  autoscaling: { enabled: false }
+
+worker:
+  replicas: 1
+  concurrency: 2
+
+web:
+  replicas: 1
+  autoscaling: { enabled: false }
+
+# nip.io resolves kb.<ip>.nip.io to <ip>. No cert-manager here: Traefik serves
+# its built-in self-signed certificate on :8443 (accept it once in the browser).
+# HTTPS is required: the session cookies are Secure.
+ingress:
+  enabled: true
+  className: traefik
+  host: kb.192.168.184.128.nip.io
+  tlsSecretName: kb-assistant-tls
+  annotations: {}
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: kube-system
+  monitoringNamespace: monitoring
+  # PostgreSQL, Redis, and SeaweedFS's S3 port (8333) instead of HTTPS.
+  egressPorts: [5432, 6379, 8333]
