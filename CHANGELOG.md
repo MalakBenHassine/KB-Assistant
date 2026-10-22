@@ -7,6 +7,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- A free public demo: read-only demo mode for the API (`KB_DEMO__READ_ONLY`, an
+  allowlist of the writes a visitor needs), demo accounts on the sign-in page,
+  a nightly reset that also removes emptied conversations, and Oracle Cloud
+  values with cert-manager and Let's Encrypt (`deploy/oracle`); a single-node
+  k3s test environment (`deploy/vm`).
 - Operations: Prometheus metrics behind a Telemetry port (RED per route
   template, answers, abstentions, tokens, rate-limit refusals, ingestion),
   OpenTelemetry tracing with a span per graph node and trace ids in logs, a

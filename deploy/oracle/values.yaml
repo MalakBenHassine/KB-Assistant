@@ -1,0 +1,74 @@
+# Chart values for the free public demo: one Oracle Cloud "Always Free" VM
+# running k3s, a DuckDNS name, a Let's Encrypt certificate, offline models,
+# and the API in read-only demo mode (deploy/oracle/README.md).
+#
+#   helm upgrade --install kb deploy/helm/kb-assistant -n kb \
+#     -f deploy/oracle/values.yaml --set ingress.host=<name>.duckdns.org
+
+images:
+  backend:
+    repository: ghcr.io/malakbenhassine/kb-assistant-backend
+    tag: main
+  web:
+    repository: ghcr.io/malakbenhassine/kb-assistant-web
+    tag: main
+  pullPolicy: Always
+
+config:
+  KB_ENVIRONMENT: production
+  KB_LOG_LEVEL: INFO
+  KB_AUTH__KEY_ID: demo-1
+  KB_STORAGE__BUCKET: kb-documents
+  KB_STORAGE__ENDPOINT_URL: http://s3.kb-deps.svc.cluster.local:8333
+  KB_STORAGE__REGION: us-east-1
+  KB_STORAGE__CREATE_BUCKET: "true"
+  # Free: no paid model or vector database. Answers quote the documents.
+  KB_EMBEDDINGS__PROVIDER: hashing
+  KB_LLM__PROVIDER: extractive
+  KB_VECTOR_STORE__PROVIDER: pgvector
+  KB_RETRIEVAL__MIN_SCORE: "0.07"
+  # Visitors share the demo accounts: they may sign in and ask, nothing else.
+  KB_DEMO__READ_ONLY: "true"
+  # The ingress (Traefik) is the one proxy in front of the web app, which
+  # forwards the client address to the API for the audit log.
+  KB_TRUSTED_PROXY_HOPS: "1"
+
+api:
+  replicas: 1
+  autoscaling: { enabled: false }
+
+worker:
+  replicas: 1
+  concurrency: 2
+
+web:
+  replicas: 1
+  autoscaling: { enabled: false }
+  # Shows the shared demo password on the sign-in page (created by bootstrap.sh).
+  demoCredentialsSecret: kb-demo-seed
+
+ingress:
+  enabled: true
+  className: traefik
+  host: CHANGE-ME.duckdns.org # set with --set ingress.host=...
+  tlsSecretName: kb-assistant-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+
+maintenance:
+  # The nightly reset: questions and answers older than a day, and the
+  # conversations left empty, are deleted (and the deletion is audited).
+  retention:
+    enabled: true
+    schedule: "0 3 * * *"
+    olderThanDays: 1
+  auditHeads:
+    enabled: true
+    schedule: "7 * * * *"
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: kube-system
+  monitoringNamespace: monitoring
+  # PostgreSQL, Redis and SeaweedFS's S3 port, all inside the cluster.
+  egressPorts: [5432, 6379, 8333]

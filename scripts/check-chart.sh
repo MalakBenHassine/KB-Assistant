@@ -15,7 +15,7 @@ trap 'rm -f "${rendered}"' EXIT
 helm lint --strict "${chart}"
 
 for flags in "" "--set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true" \
-  "--set networkPolicy.enabled=false --set ingress.enabled=false --set api.autoscaling.enabled=false"; do
+  "--set networkPolicy.enabled=false --set ingress.enabled=false --set api.autoscaling.enabled=false"   "-f deploy/vm/values.yaml" "-f deploy/oracle/values.yaml --set ingress.host=demo.duckdns.org"; do
   # shellcheck disable=SC2086
   helm template kb "${chart}" ${flags} >"${rendered}"
   # Prometheus Operator CRDs have no published schema here; everything else must validate.

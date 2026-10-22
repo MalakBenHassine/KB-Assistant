@@ -1,0 +1,32 @@
+# Let's Encrypt issuers for cert-manager, solving HTTP-01 challenges through
+# Traefik. Use `letsencrypt-staging` first if you are unsure: its certificates
+# are not trusted by browsers, but its rate limits are generous.
+# No account e-mail: Let's Encrypt no longer sends expiry mail, and cert-manager
+# renews on its own.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

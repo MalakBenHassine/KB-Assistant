@@ -130,6 +130,11 @@ compatible with the previous version of the code during the rollout.
 
 ### Target: k3s on one Oracle Cloud VM
 
+[`deploy/oracle/README.md`](../deploy/oracle/README.md) is the step-by-step
+guide for the free public demo (Always Free VM, DuckDNS, Let's Encrypt, the API
+in read-only demo mode). [`deploy/vm/README.md`](../deploy/vm/README.md) runs
+the same chart on a local VM for testing.
+
 The Always Free Ampere VM runs k3s; the images are multi-arch, so the same
 digests run there. PostgreSQL with pgvector and Redis run as separate
 workloads or managed services; their backups are outside this chart. Pulling
