@@ -13,10 +13,12 @@ type Turn =
   { kind: "user"; key: string; text: string } | { kind: "assistant"; turn: AssistantTurn };
 
 const MAX_QUESTION = 2_000;
+// One question per demo department, each answered by the demo corpus (eval/dataset.jsonl).
+// Asked by someone outside that department, they show the access rules at work.
 const SUGGESTIONS = [
-  "How many days of paid leave do I get?",
-  "What is the deployment process?",
-  "How do I submit an expense report?",
+  "How many days of paid leave do employees get per year?",
+  "On which days do production deployments happen?",
+  "What discount does annual billing give?",
 ];
 
 function fromHistory(messages: Message[]): Turn[] {
