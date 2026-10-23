@@ -148,10 +148,14 @@ verifies image signatures before pulling (Flux) is the next step
 
 ## Known limits
 
-- **OpenAI and Pinecone are implemented, not exercised.** Their adapters are
-  unit-tested against fakes, and the vector-store contract tests run against
-  Pinecone when a key is set; no key was used. Everything that ran, locally, in
-  CI and on k3s, used pgvector and the offline models.
+- **Pinecone is verified by its contract, not in production.** The six
+  vector-store contract tests (ranking, department scope, tenant isolation,
+  deactivated versions, idempotent upsert, empty scope) pass against a real
+  Pinecone serverless index on the free tier, as they do against pgvector. CI
+  has no key, so they run there on pgvector only.
+- **OpenAI is implemented, not exercised.** Its adapters are unit-tested
+  against fakes; no key was used. Everything that ran, locally, in CI and on
+  k3s, used the offline models.
 - **The quality numbers measure the pipeline, not a language model.** The
   offline profile matches words, not meaning, and its extractive model quotes
   sentences instead of writing answers; a hosted model needs its own
