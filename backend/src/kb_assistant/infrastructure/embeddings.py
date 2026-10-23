@@ -5,6 +5,9 @@
 per input. Our defaults stay well under them. The SDK's own retries are
 disabled so that one policy, ours, governs every external call.
 
+The same adapter serves a local model through Ollama's OpenAI-compatible API.
+`ZeroPaddedEmbedder` fits a narrower model to the index width (ADR-0022).
+
 `HashingEmbedder` is a deterministic, offline stand-in: feature hashing of
 words and word pairs, L2-normalised. It has real lexical similarity (shared
 words score higher) and needs no key, which makes it fit for tests, CI and a
@@ -30,7 +33,7 @@ from openai import (
 
 from kb_assistant.domain.documents import EmbeddingBatch
 from kb_assistant.domain.errors import IngestionError, ProviderUnavailableError
-from kb_assistant.domain.ports import Tokenizer
+from kb_assistant.domain.ports import Embedder, Tokenizer
 from kb_assistant.infrastructure.resilience import retrying
 
 PROVIDER_MAX_INPUTS = 2_048
@@ -51,6 +54,8 @@ class OpenAIEmbedder:
         max_request_tokens: int = 250_000,
         attempts: int = 5,
         timeout_s: float = 30.0,
+        query_prefix: str = "",
+        document_prefix: str = "",
     ) -> None:
         if not 0 < max_inputs <= PROVIDER_MAX_INPUTS:
             raise ValueError(f"max_inputs must be within 1..{PROVIDER_MAX_INPUTS}")
@@ -64,6 +69,8 @@ class OpenAIEmbedder:
         self._max_request_tokens = max_request_tokens
         self._attempts = attempts
         self._timeout_s = timeout_s
+        self._query_prefix = query_prefix
+        self._document_prefix = document_prefix
 
     @property
     def model_id(self) -> str:
@@ -97,14 +104,14 @@ class OpenAIEmbedder:
     async def embed_documents(self, texts: Sequence[str]) -> EmbeddingBatch:
         vectors: list[tuple[float, ...]] = []
         total_tokens = 0
-        for batch in self.batches(texts):
+        for batch in self.batches([self._document_prefix + t for t in texts]):
             batch_vectors, tokens = await self._embed(batch)
             vectors.extend(batch_vectors)
             total_tokens += tokens
         return EmbeddingBatch(vectors=tuple(vectors), total_tokens=total_tokens)
 
     async def embed_query(self, text: str) -> tuple[float, ...]:
-        vectors, _ = await self._embed([text])
+        vectors, _ = await self._embed([self._query_prefix + text])
         return vectors[0]
 
     async def _embed(self, batch: list[str]) -> tuple[list[tuple[float, ...]], int]:
@@ -138,6 +145,39 @@ class OpenAIEmbedder:
                 retryable=False,
             )
         return vectors, response.usage.total_tokens
+
+
+class ZeroPaddedEmbedder:
+    """Pads a narrower model's vectors with zeros to the index width (ADR-0022).
+
+    Appending zeros changes neither dot products nor norms, so cosine similarity,
+    and with it the ranking and the calibrated threshold, are exactly the model's.
+    """
+
+    def __init__(self, inner: Embedder, dimension: int) -> None:
+        if inner.dimension > dimension:
+            raise ValueError(f"cannot pad {inner.dimension} dimensions down to {dimension}")
+        self._inner = inner
+        self._dimension = dimension
+        self._padding = (0.0,) * (dimension - inner.dimension)
+
+    @property
+    def model_id(self) -> str:
+        return self._inner.model_id
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    async def embed_documents(self, texts: Sequence[str]) -> EmbeddingBatch:
+        batch = await self._inner.embed_documents(texts)
+        return EmbeddingBatch(
+            vectors=tuple(v + self._padding for v in batch.vectors),
+            total_tokens=batch.total_tokens,
+        )
+
+    async def embed_query(self, text: str) -> tuple[float, ...]:
+        return await self._inner.embed_query(text) + self._padding
 
 
 _WORD = re.compile(r"\w+", re.UNICODE)

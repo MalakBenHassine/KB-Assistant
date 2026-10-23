@@ -210,13 +210,60 @@ first thing to look at in an `openai` report.
 - **Lexical offline profile.** The hashing embedder matches words, not
   meaning; a paraphrase with no shared word fails. The offline numbers are a
   regression baseline for the pipeline, not a claim about answer quality in
-  production. The `openai` profile measures that, and needs a key.
+  production. The `ollama` profile below measures real models for free; the
+  `openai` profile needs a key.
 - **Small, synthetic corpus.** 30 short documents written for the test. It
   exercises isolation and abstention well and retrieval ranking poorly
   (almost every question has one obvious document).
-- **Next:** an LLM-as-judge faithfulness check for hosted models; long
-  documents to calibrate chunk size and `top_k`; a recorded `openai` baseline
-  with floors; questions in French.
+- **Lexical fact matching penalises paraphrase.** Three of the four errors of
+  the `ollama` run are right answers worded differently ("14 days" for
+  "14-day"); see below.
+- **Next:** an LLM-as-judge faithfulness check for generative models; fact
+  matching that tolerates paraphrase; long documents to calibrate chunk size
+  and `top_k`; recorded baselines with floors over several runs; questions in
+  French.
+
+### 5.1 Local models: the `ollama` profile
+
+`nomic-embed-text` (768 dimensions, zero-padded to 1536, ADR-0022) and
+`qwen3:4b`, served by Ollama 0.40.6 on a laptop RTX 3050 (6 GB), same 88
+questions. Report: [`eval/reports/ollama.md`](../eval/reports/ollama.md).
+
+```bash
+KB_EVAL_PROFILE=ollama make eval   # KB_EVAL_OLLAMA_URL if Ollama is not on 127.0.0.1:11434
+```
+
+| Metric | Offline | Ollama |
+|---|---|---|
+| hit@1 / MRR | 98.2 % / 0.991 | **100 % / 1.000** |
+| Answer accuracy (lexical) | 94.6 % | 92.9 % (52/56) |
+| Answer accuracy (read by hand) | 94.6 % | **98.2 % (55/56)** |
+| Citation precision | 93.8 % | **100 %** |
+| Faithfulness (lexical) | 100 % | 91.1 % |
+| Abstention accuracy / recall | 98.9 % / 96.6 % | 98.9 % / **100 %** |
+| False abstention rate | 0 % | 1.8 % (1/56) |
+| Leaked chunks / wrong-source facts | 0 / 0 | 0 / 0 |
+| Latency p50 / p95 | 15 ms / 26 ms | 27.5 s / 35.6 s |
+
+**The four errors.** `acme-hr-02` ("5 unused paid leave days" for "5 unused
+days"), `acme-prod-03` ("14 days" for "14-day") and `globex-prod-02` ("30 days"
+for "30-day") are correct answers that the lexical matcher rejects; the same
+cause lowers lexical faithfulness, which counts reworded sentences as
+unsupported. `acme-admin-01` is a real error: the model judged its own answer
+unsupported and abstained. The facts are not reworded in the dataset to pass:
+the matcher is what needs to change (§5).
+
+**Calibration.** Every threshold in [0.00, 0.71] gives the best accuracy
+(94.1 %): with a model that abstains on its own, the score threshold is a
+safety net, not the deciding check. **0.35**, the middle, is the configured
+value for this profile (`compose.ollama.yaml`). The gate pass ran at 0.07,
+inside the same interval, where the probe pass predicts identical decisions.
+
+**Latency.** Each question makes several model calls with reasoning on a 4 B
+model on a laptop GPU: fine for measuring quality, not for serving users.
+
+The gate for this profile checks isolation only: a non-deterministic model
+needs floors set over several runs, and CI has no GPU.
 
 ## 6. Adding a question
 

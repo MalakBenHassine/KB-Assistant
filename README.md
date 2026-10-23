@@ -76,8 +76,11 @@ on a real k3s cluster. What is *not* proven is listed under
   |---|---|---|---|---|
   | 100 % | 0.991 | 94.6 % | 98.9 % | 0 |
 
-  *Offline profile (lexical embedder, extractive model): a pipeline baseline,
-  not a claim about a hosted model.*
+  *Offline profile (lexical embedder, extractive model): a pipeline baseline.*
+  With real local models (nomic-embed-text and qwen3:4b through Ollama, free),
+  hit@1 is 100 %, citation precision 100 %, abstention recall 100 %, still 0
+  leaks, and 55 of 56 answers are right when read by hand
+  ([EVALUATION.md §5.1](docs/EVALUATION.md#51-local-models-the-ollama-profile)).
 - **Run like a product, not a demo.** Rate limits per user and tenant (Redis
   token buckets, `429` + `Retry-After`), monthly token budgets per tenant,
   feedback on every answer, analytics with **knowledge gaps** (the questions
@@ -100,7 +103,9 @@ on a real k3s cluster. What is *not* proven is listed under
   p99 to 0 errors and 0.76 s, at twice the throughput
   ([PERFORMANCE.md](docs/PERFORMANCE.md)).
 - **Runs without paid keys.** pgvector and a deterministic offline embedder
-  stand in for Pinecone and OpenAI, behind the same ports and contract tests.
+  stand in for Pinecone and OpenAI, behind the same ports and contract tests;
+  Ollama runs real models locally through the same adapters
+  ([ADR-0022](docs/adr/0022-local-models-through-ollama-zero-padded-to-the-index-width.md)).
 
 ## Run it
 
@@ -129,7 +134,13 @@ http://127.0.0.1:8000/docs.
 
 Everything runs offline by default: a lexical embedder and an extractive model
 that quotes sources. `KB_EMBEDDINGS_PROVIDER=openai`, `KB_LLM_PROVIDER=openai`
-and `OPENAI_API_KEY` in `.env` switch to the hosted models.
+and `OPENAI_API_KEY` in `.env` switch to the hosted models. With
+[Ollama](https://ollama.com) installed, real models run locally for free:
+
+```bash
+ollama pull nomic-embed-text && ollama pull qwen3:4b
+make clean && make up-ollama && make demo
+```
 
 `make help` lists the other targets (`down`, `clean`, `logs`, `lint`, `test`, `eval`, `check`).
 
@@ -153,13 +164,14 @@ verifies image signatures before pulling (Flux) is the next step
   deactivated versions, idempotent upsert, empty scope) pass against a real
   Pinecone serverless index on the free tier, as they do against pgvector. CI
   has no key, so they run there on pgvector only.
-- **OpenAI is implemented, not exercised.** Its adapters are unit-tested
-  against fakes; no key was used. Everything that ran, locally, in CI and on
-  k3s, used the offline models.
-- **The quality numbers measure the pipeline, not a language model.** The
-  offline profile matches words, not meaning, and its extractive model quotes
-  sentences instead of writing answers; a hosted model needs its own
-  evaluation run and threshold calibration ([EVALUATION.md](docs/EVALUATION.md) §5).
+- **OpenAI is implemented, not exercised.** No key was used. Its adapters
+  are unit-tested against fakes, and they run for real against local models
+  through Ollama's compatible API; CI and k3s use the offline models.
+- **The CI gate measures the pipeline, not a language model.** It runs the
+  offline profile, which matches words and quotes sentences. Local models were
+  measured once on a laptop GPU (§5.1 of [EVALUATION.md](docs/EVALUATION.md));
+  their answers take about 30 s, and the lexical fact matching undercounts
+  reworded answers.
 - **No OCR**: a scanned PDF has no text to index and fails with a clear error.
 - **Upload only**: connectors to SharePoint or Drive sit behind a port and are
   not written ([ADR-0013](docs/adr/0013-upload-first-connectors-behind-a-source-port.md)).
@@ -173,6 +185,7 @@ make install   # backend and web dependencies, git hooks
 make check     # format, lint, mypy --strict, import contracts, tests, coverage gate, evaluation
 make chart     # lint, render and validate the Helm chart (needs helm and kubeconform)
 make eval      # the evaluation set and its quality gate; report in eval/reports/
+make up-ollama # the stack on local models served by Ollama
 ```
 
 The backend tests start real PostgreSQL and Redis containers (testcontainers)
@@ -199,7 +212,7 @@ as in production.
 Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 (async) · Alembic · PostgreSQL
 with row-level security · Redis · Celery · Next.js 16 · TypeScript · Tailwind ·
 Docker · GitHub Actions · cosign · Trivy · CodeQL · LangGraph · pgvector (Pinecone
-adapter) · OpenAI adapter · SeaweedFS · OpenTelemetry · Prometheus · Grafana ·
+adapter) · OpenAI adapter · Ollama · SeaweedFS · OpenTelemetry · Prometheus · Grafana ·
 Helm · k3s · k6.
 
 ## Roadmap

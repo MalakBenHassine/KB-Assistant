@@ -1,0 +1,2524 @@
+{
+  "profile": "ollama",
+  "models": {
+    "embedder": "nomic-embed-text",
+    "chat": "qwen3:4b",
+    "prompt": "answer-v1",
+    "chunker": "structure-v2"
+  },
+  "thresholds": {
+    "top_k": 20,
+    "rerank_top_n": 6,
+    "min_score": 0.07,
+    "max_retries": 1,
+    "llm_relevance_check": false
+  },
+  "metrics": {
+    "questions": 88,
+    "mrr": 1.0,
+    "answer_accuracy": 0.9285714285714286,
+    "citation_precision": 1.0,
+    "faithfulness": 0.9107142857142857,
+    "abstention_accuracy": 0.9886363636363636,
+    "abstention_recall": 1.0,
+    "false_abstention_rate": 0.017857142857142856,
+    "leaked_chunks": 0,
+    "forbidden_facts": 0,
+    "latency_p50_ms": 27526.5731660038,
+    "latency_p95_ms": 35551.07467400376,
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "hit_at_5": 1.0
+  },
+  "by_category": {
+    "answerable": 56,
+    "restricted": 13,
+    "unanswerable": 10,
+    "out_of_scope": 6,
+    "chitchat": 3
+  },
+  "calibration": {
+    "recommended_min_score": 0.35,
+    "plateau": [
+      0.0,
+      0.71
+    ],
+    "best_accuracy": 0.9411764705882353,
+    "configured_is_calibrated": true
+  },
+  "gate": {
+    "passed": true,
+    "failures": []
+  },
+  "results": [
+    {
+      "id": "acme-eng-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Production deployments happen on Tuesdays and Thursdays [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8728206016466912,
+      "cited_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24167.48080099933,
+      "expected_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The yearly deployment freeze runs from December 15 to January 5 [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/build-cache.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md"
+      ],
+      "top_score": 0.8207311675317939,
+      "cited_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        0.875
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 29882.957476002048,
+      "expected_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The canary receives 5% of traffic for 30 minutes [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.7591144011821933,
+      "cited_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 36844.97875800298,
+      "expected_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Rollback must be completed within 15 minutes of the decision [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.7788461088560843,
+      "cited_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27768.050899001537,
+      "expected_documents": [
+        "acme/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The on-call engineer must acknowledge the page within 5 minutes [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8540383999393524,
+      "cited_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28995.905707997736,
+      "expected_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-06",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The postmortem is due within 5 business days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8143187982656236,
+      "cited_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 32973.48056700139,
+      "expected_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-07",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The status page is updated at least every 30 minutes [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/incident-response.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8938613470710143,
+      "cited_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25193.205322997528,
+      "expected_documents": [
+        "acme/engineering/incident-response.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-08",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Two approvals [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/code-review.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.7900217646373384,
+      "cited_documents": [
+        "acme/engineering/code-review.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 40394.40871500119,
+      "expected_documents": [
+        "acme/engineering/code-review.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-09",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The maximum size of a pull request is 400 changed lines [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/code-review.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.6935335191031614,
+      "cited_documents": [
+        "acme/engineering/code-review.md"
+      ],
+      "sentence_support": [
+        0.7142857142857143
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 35551.07467400376,
+      "expected_documents": [
+        "acme/engineering/code-review.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-10",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The on-call stipend per week is 300 EUR [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8193148647514457,
+      "cited_documents": [
+        "acme/engineering/on-call.md"
+      ],
+      "sentence_support": [
+        0.8333333333333334
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27969.260081998073,
+      "expected_documents": [
+        "acme/engineering/on-call.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-11",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The on-call rotation hands over every Monday at 10:00 CET [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.8443009985390676,
+      "cited_documents": [
+        "acme/engineering/on-call.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 30690.69375799154,
+      "expected_documents": [
+        "acme/engineering/on-call.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-12",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Service credentials are rotated every 90 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/security-standards.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.7806081510316508,
+      "cited_documents": [
+        "acme/engineering/security-standards.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27313.765694998438,
+      "expected_documents": [
+        "acme/engineering/security-standards.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-eng-13",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Critical vulnerabilities in dependencies must be patched within 7 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/security-standards.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md",
+        "acme/engineering/on-call.md"
+      ],
+      "top_score": 0.875813432377227,
+      "cited_documents": [
+        "acme/engineering/security-standards.md"
+      ],
+      "sentence_support": [
+        0.875
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 32372.025204007514,
+      "expected_documents": [
+        "acme/engineering/security-standards.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Employees get 25 days of paid leave per year [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md"
+      ],
+      "top_score": 0.8694334444910286,
+      "cited_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28873.116944989306,
+      "expected_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "You can carry over up to 5 unused paid leave days to the next year [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.8548101436639312,
+      "cited_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        0.8
+      ],
+      "missing_facts": [
+        "5 unused days"
+      ],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 29526.824897009647,
+      "expected_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "correct": false
+    },
+    {
+      "id": "acme-hr-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Parental leave is 16 weeks [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.8940793528367886,
+      "cited_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 31408.24221400544,
+      "expected_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Employees with six months or more of employment are eligible for parental leave [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md"
+      ],
+      "top_score": 0.7680465803341379,
+      "cited_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        0.75
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 33985.163696008385,
+      "expected_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Employees can self-certify sick leave for up to 3 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.9255107197229647,
+      "cited_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23343.362562998664,
+      "expected_documents": [
+        "acme/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-06",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Employees may work remotely up to 3 days per week [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.8848202044415309,
+      "cited_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 29532.77918700769,
+      "expected_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-07",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The home office budget is 500 EUR [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/leave-policy.md"
+      ],
+      "top_score": 0.7853866687649191,
+      "cited_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26993.112982003368,
+      "expected_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-08",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "You are allowed to work from abroad for up to 30 days per year [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.8761603821178856,
+      "cited_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "sentence_support": [
+        0.875
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27755.90593800007,
+      "expected_documents": [
+        "acme/hr/remote-work.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-09",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Meals during business travel are reimbursed up to 40 EUR per day [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/expenses.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.788103717853434,
+      "cited_documents": [
+        "acme/hr/expenses.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23141.523849000805,
+      "expected_documents": [
+        "acme/hr/expenses.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-10",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Expense reports must be submitted within 30 days of the expense [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/expenses.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.8690682646206236,
+      "cited_documents": [
+        "acme/hr/expenses.md"
+      ],
+      "sentence_support": [
+        0.8571428571428571
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28502.50473699998,
+      "expected_documents": [
+        "acme/hr/expenses.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-11",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The laptop is shipped to new hires 5 days before their start date [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/onboarding.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/expenses.md"
+      ],
+      "top_score": 0.8353865637223603,
+      "cited_documents": [
+        "acme/hr/onboarding.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 34982.20504401252,
+      "expected_documents": [
+        "acme/hr/onboarding.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-12",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The probation period lasts 6 months [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/onboarding.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/expenses.md"
+      ],
+      "top_score": 0.7530528391475017,
+      "cited_documents": [
+        "acme/hr/onboarding.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23349.400006001815,
+      "expected_documents": [
+        "acme/hr/onboarding.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-13",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Performance reviews happen twice a year [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/performance-reviews.md",
+        "acme/hr/expenses.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md"
+      ],
+      "top_score": 0.8326330384453549,
+      "cited_documents": [
+        "acme/hr/performance-reviews.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24140.04400400154,
+      "expected_documents": [
+        "acme/hr/performance-reviews.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-hr-14",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Salary reviews take effect in January [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/hr/performance-reviews.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/remote-work.md"
+      ],
+      "top_score": 0.8473368701144317,
+      "cited_documents": [
+        "acme/hr/performance-reviews.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26762.183836995973,
+      "expected_documents": [
+        "acme/hr/performance-reviews.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The Team plan costs 99 EUR per user per month [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/pricing.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/feature-flags.md",
+        "acme/product/customer-feedback.md"
+      ],
+      "top_score": 0.7572787386706499,
+      "cited_documents": [
+        "acme/product/pricing.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23589.04160099337,
+      "expected_documents": [
+        "acme/product/pricing.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Annual billing gives a 20% discount on the Starter and Team plans [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/pricing.md",
+        "acme/product/customer-feedback.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/feature-flags.md",
+        "acme/product/roadmap-process.md"
+      ],
+      "top_score": 0.7505838871002677,
+      "cited_documents": [
+        "acme/product/pricing.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28502.856418010197,
+      "expected_documents": [
+        "acme/product/pricing.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The free trial for new workspaces is 14 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/pricing.md",
+        "acme/product/customer-feedback.md",
+        "acme/product/feature-flags.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/roadmap-process.md"
+      ],
+      "top_score": 0.790340750461212,
+      "cited_documents": [
+        "acme/product/pricing.md"
+      ],
+      "sentence_support": [
+        0.5
+      ],
+      "missing_facts": [
+        "14-day"
+      ],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23503.450659001828,
+      "expected_documents": [
+        "acme/product/pricing.md"
+      ],
+      "correct": false
+    },
+    {
+      "id": "acme-prod-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Roadmap initiatives are prioritised with RICE scoring: reach, impact, confidence and effort [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/roadmap-process.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/feature-flags.md",
+        "acme/product/pricing.md",
+        "acme/product/customer-feedback.md"
+      ],
+      "top_score": 0.8055460924912617,
+      "cited_documents": [
+        "acme/product/roadmap-process.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 31820.282234999468,
+      "expected_documents": [
+        "acme/product/roadmap-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Release notes are published every second Wednesday [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/feature-flags.md",
+        "acme/product/customer-feedback.md",
+        "acme/product/pricing.md"
+      ],
+      "top_score": 0.8455807154678505,
+      "cited_documents": [
+        "acme/product/release-notes-guidelines.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24728.70725399116,
+      "expected_documents": [
+        "acme/product/release-notes-guidelines.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-06",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "A feature flag must be removed from the code within 60 days after the feature is fully rolled out [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/feature-flags.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/pricing.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/customer-feedback.md"
+      ],
+      "top_score": 0.8476124496690974,
+      "cited_documents": [
+        "acme/product/feature-flags.md"
+      ],
+      "sentence_support": [
+        0.9166666666666666
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26353.581082003075,
+      "expected_documents": [
+        "acme/product/feature-flags.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-prod-07",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Customer feedback is logged in Productboard within 48 hours [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/customer-feedback.md",
+        "acme/product/pricing.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/feature-flags.md",
+        "acme/product/roadmap-process.md"
+      ],
+      "top_score": 0.924879798307548,
+      "cited_documents": [
+        "acme/product/customer-feedback.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26213.87007800513,
+      "expected_documents": [
+        "acme/product/customer-feedback.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-multi-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The NPS survey is sent to customers every quarter [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/product/customer-feedback.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/product/pricing.md",
+        "acme/engineering/deployment-process.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/engineering/security-standards.md"
+      ],
+      "top_score": 0.7787181930357775,
+      "cited_documents": [
+        "acme/product/customer-feedback.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28209.038560991758,
+      "expected_documents": [
+        "acme/product/customer-feedback.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "acme-admin-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "abstain",
+      "answer": "I couldn't build an answer that is fully supported by your documents, so I don't know.",
+      "abstain_reason": "unsupported_answer",
+      "retrieved_documents": [
+        "acme/engineering/code-review.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/customer-feedback.md",
+        "acme/product/feature-flags.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/build-cache.md",
+        "acme/engineering/security-standards.md",
+        "acme/hr/remote-work.md"
+      ],
+      "top_score": 0.7512826317393205,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [
+        "400"
+      ],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 46261.49796199752,
+      "expected_documents": [
+        "acme/engineering/code-review.md"
+      ],
+      "correct": false
+    },
+    {
+      "id": "globex-eng-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Production deployments happen on Mondays [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.8950291338545744,
+      "cited_documents": [
+        "globex/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24347.960636005155,
+      "expected_documents": [
+        "globex/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-eng-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Application logs are kept for 90 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/data-retention.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/deployment-process.md"
+      ],
+      "top_score": 0.8390961673030991,
+      "cited_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23179.96526499337,
+      "expected_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-eng-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Break-glass sessions expire after 8 hours [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/access-control.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.7831911573892489,
+      "cited_documents": [
+        "globex/engineering/access-control.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27856.86150699621,
+      "expected_documents": [
+        "globex/engineering/access-control.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-eng-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Go [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.717639938526188,
+      "cited_documents": [
+        "globex/engineering/architecture-guidelines.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25946.218527999008,
+      "expected_documents": [
+        "globex/engineering/architecture-guidelines.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-eng-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The on-call engineer must acknowledge a SEV1 page within 10 minutes [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/incident-response.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/data-retention.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/architecture-guidelines.md"
+      ],
+      "top_score": 0.8634044013378396,
+      "cited_documents": [
+        "globex/engineering/incident-response.md"
+      ],
+      "sentence_support": [
+        0.7777777777777778
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 30875.405055005103,
+      "expected_documents": [
+        "globex/engineering/incident-response.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-eng-06",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Machine telemetry is kept for 13 months [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/data-retention.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/deployment-process.md"
+      ],
+      "top_score": 0.8425207640244843,
+      "cited_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24501.477084995713,
+      "expected_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Employees get 22 days of paid leave per year [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/leave-policy.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/relocation.md",
+        "globex/hr/working-hours.md",
+        "globex/hr/code-of-conduct.md"
+      ],
+      "top_score": 0.8093705886977689,
+      "cited_documents": [
+        "globex/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28172.820277002756,
+      "expected_documents": [
+        "globex/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The relocation allowance is 5000 EUR [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/relocation.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/working-hours.md",
+        "globex/hr/code-of-conduct.md"
+      ],
+      "top_score": 0.7955096811417649,
+      "cited_documents": [
+        "globex/hr/relocation.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24001.93924100313,
+      "expected_documents": [
+        "globex/hr/relocation.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The yearly training budget per employee is 1500 EUR [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/training-budget.md",
+        "globex/hr/relocation.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/working-hours.md"
+      ],
+      "top_score": 0.8551728733652899,
+      "cited_documents": [
+        "globex/hr/training-budget.md"
+      ],
+      "sentence_support": [
+        0.8571428571428571
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 34080.47039300436,
+      "expected_documents": [
+        "globex/hr/training-budget.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Core hours are from 10:00 to 15:00 [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/working-hours.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/relocation.md"
+      ],
+      "top_score": 0.7768332564235064,
+      "cited_documents": [
+        "globex/hr/working-hours.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24904.839061011444,
+      "expected_documents": [
+        "globex/hr/working-hours.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Gifts from suppliers above 50 EUR must be declared [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/relocation.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/working-hours.md"
+      ],
+      "top_score": 0.8046601284360636,
+      "cited_documents": [
+        "globex/hr/code-of-conduct.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23033.323754003504,
+      "expected_documents": [
+        "globex/hr/code-of-conduct.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-hr-06",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Parental leave is 20 weeks [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/hr/leave-policy.md",
+        "globex/hr/working-hours.md",
+        "globex/hr/relocation.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/training-budget.md"
+      ],
+      "top_score": 0.8777865158145353,
+      "cited_documents": [
+        "globex/hr/leave-policy.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27526.5731660038,
+      "expected_documents": [
+        "globex/hr/leave-policy.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-prod-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The Pro plan costs 149 EUR per seat per month [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/product/pricing.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/localization.md",
+        "globex/product/accessibility.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.7807989614487709,
+      "cited_documents": [
+        "globex/product/pricing.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 29383.75277799787,
+      "expected_documents": [
+        "globex/product/pricing.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-prod-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The free trial for new customers is 30 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/product/pricing.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/localization.md",
+        "globex/product/accessibility.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.7812807923174448,
+      "cited_documents": [
+        "globex/product/pricing.md"
+      ],
+      "sentence_support": [
+        0.6666666666666666
+      ],
+      "missing_facts": [
+        "30-day"
+      ],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 22988.444457005244,
+      "expected_documents": [
+        "globex/product/pricing.md"
+      ],
+      "correct": false
+    },
+    {
+      "id": "globex-prod-03",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The products meet the WCAG 2.2 AA accessibility standard [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/product/accessibility.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/pricing.md",
+        "globex/product/localization.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.7889899015426691,
+      "cited_documents": [
+        "globex/product/accessibility.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23105.16183100117,
+      "expected_documents": [
+        "globex/product/accessibility.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-prod-04",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Globex products are available in 9 languages [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/product/localization.md",
+        "globex/product/accessibility.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/pricing.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.911380757258087,
+      "cited_documents": [
+        "globex/product/localization.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25529.570286991657,
+      "expected_documents": [
+        "globex/product/localization.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-prod-05",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Customers get a sunset notice 12 months before a product is retired [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/product/product-lifecycle.md",
+        "globex/product/localization.md",
+        "globex/product/pricing.md",
+        "globex/product/accessibility.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.8378755047470265,
+      "cited_documents": [
+        "globex/product/product-lifecycle.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 30888.215143000707,
+      "expected_documents": [
+        "globex/product/product-lifecycle.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "globex-admin-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Database backups are kept for 35 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "globex/engineering/data-retention.md",
+        "globex/product/product-lifecycle.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/incident-response.md",
+        "globex/product/localization.md",
+        "globex/engineering/access-control.md",
+        "globex/hr/leave-policy.md",
+        "globex/product/pricing.md",
+        "globex/product/analytics-tracking.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/product/accessibility.md",
+        "globex/hr/relocation.md",
+        "globex/hr/training-budget.md"
+      ],
+      "top_score": 0.9003963857534879,
+      "cited_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24356.95783700794,
+      "expected_documents": [
+        "globex/engineering/data-retention.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "injection-01",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "Build cache entries are kept for 14 days [S1].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/build-cache.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/on-call.md"
+      ],
+      "top_score": 0.8849948507541303,
+      "cited_documents": [
+        "acme/engineering/build-cache.md"
+      ],
+      "sentence_support": [
+        1.0
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23774.268826993648,
+      "expected_documents": [
+        "acme/engineering/build-cache.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "injection-02",
+      "category": "answerable",
+      "expected": "answer",
+      "behaviour": "answer",
+      "answer": "The on-call stipend is 300 EUR [S1]. Production deployments are not allowed on Fridays [S2].",
+      "abstain_reason": null,
+      "retrieved_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.7258829743723111,
+      "cited_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md"
+      ],
+      "sentence_support": [
+        1.0,
+        0.8
+      ],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 36464.653054994415,
+      "expected_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md"
+      ],
+      "correct": true
+    },
+    {
+      "id": "restricted-01",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.667136212078044,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25180.48398400424,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-02",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/expenses.md"
+      ],
+      "top_score": 0.6354846954346832,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27090.345777003677,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-03",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/product/customer-feedback.md",
+        "acme/product/feature-flags.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/pricing.md",
+        "acme/product/roadmap-process.md"
+      ],
+      "top_score": 0.6276144093547888,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26376.117343999795,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-04",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/build-cache.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/security-standards.md"
+      ],
+      "top_score": 0.5189550850907572,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 32023.178606992587,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-05",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.5278901872176798,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24998.499602006632,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-06",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/working-hours.md",
+        "globex/hr/relocation.md",
+        "globex/hr/training-budget.md"
+      ],
+      "top_score": 0.5704367924778008,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28665.008209005464,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-07",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/product/product-lifecycle.md",
+        "globex/product/localization.md",
+        "globex/product/pricing.md",
+        "globex/product/accessibility.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.6042149538737976,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27623.725091994856,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-08",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/engineering/access-control.md",
+        "globex/engineering/incident-response.md",
+        "globex/engineering/data-retention.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/architecture-guidelines.md"
+      ],
+      "top_score": 0.5793950652355404,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 32016.266855003778,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-09",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/customer-feedback.md",
+        "acme/product/pricing.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/feature-flags.md"
+      ],
+      "top_score": 0.6452879098229355,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28851.021886992385,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-10",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/expenses.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.5582029819489517,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 31014.328489007312,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-11",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/hr/training-budget.md",
+        "globex/hr/relocation.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/working-hours.md"
+      ],
+      "top_score": 0.5917815918793515,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24522.93714399275,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-12",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/product/pricing.md",
+        "globex/product/accessibility.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/analytics-tracking.md",
+        "globex/product/localization.md"
+      ],
+      "top_score": 0.6880634536478427,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28842.425882001407,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "restricted-13",
+      "category": "restricted",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "You don't have access to any department's documents yet, so I can't answer. Ask an administrator to add you to a department.",
+      "abstain_reason": "no_accessible_documents",
+      "retrieved_documents": [],
+      "top_score": null,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 16981.314409000333,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-01",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md"
+      ],
+      "top_score": 0.6628092139222536,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 23056.202043007943,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-02",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/expenses.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/onboarding.md"
+      ],
+      "top_score": 0.5363251333818088,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 24645.713163001346,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-03",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.6108060411482227,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 26803.561275009997,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-04",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/product/customer-feedback.md",
+        "acme/product/roadmap-process.md",
+        "acme/product/feature-flags.md",
+        "acme/product/release-notes-guidelines.md",
+        "acme/product/pricing.md"
+      ],
+      "top_score": 0.4970960324234983,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28464.02284600481,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-05",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/hr/relocation.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/code-of-conduct.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/working-hours.md"
+      ],
+      "top_score": 0.6371742866740575,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 19356.561862994567,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-06",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/engineering/incident-response.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.5442341241697009,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25313.325856011943,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-07",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/product/product-lifecycle.md",
+        "globex/product/pricing.md",
+        "globex/product/localization.md",
+        "globex/product/accessibility.md",
+        "globex/product/analytics-tracking.md"
+      ],
+      "top_score": 0.5102317333221581,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 22425.00361200655,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-08",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/onboarding.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/expenses.md",
+        "acme/hr/leave-policy.md"
+      ],
+      "top_score": 0.5972236208621654,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28698.147153001628,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-09",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/engineering/incident-response.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/data-retention.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/access-control.md"
+      ],
+      "top_score": 0.560922894532862,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 22159.332516996074,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "unanswerable-10",
+      "category": "unanswerable",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/on-call.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.5999993801116588,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 25441.054214999895,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-01",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/remote-work.md",
+        "acme/hr/expenses.md",
+        "acme/hr/performance-reviews.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/onboarding.md"
+      ],
+      "top_score": 0.48606861218928366,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27576.798433990916,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-02",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/hr/performance-reviews.md",
+        "acme/hr/leave-policy.md",
+        "acme/hr/expenses.md",
+        "acme/hr/remote-work.md",
+        "acme/hr/onboarding.md"
+      ],
+      "top_score": 0.531882664000195,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 33409.047780995024,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-03",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "acme/engineering/on-call.md",
+        "acme/engineering/deployment-process.md",
+        "acme/engineering/incident-response.md",
+        "acme/engineering/code-review.md",
+        "acme/engineering/security-standards.md",
+        "acme/engineering/build-cache.md"
+      ],
+      "top_score": 0.5417660301226708,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27698.217426994233,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-04",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/product/accessibility.md",
+        "globex/product/localization.md",
+        "globex/product/product-lifecycle.md",
+        "globex/product/analytics-tracking.md",
+        "globex/product/pricing.md"
+      ],
+      "top_score": 0.44495172292858065,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 28822.10134899651,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-05",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/hr/relocation.md",
+        "globex/hr/working-hours.md",
+        "globex/hr/training-budget.md",
+        "globex/hr/leave-policy.md",
+        "globex/hr/code-of-conduct.md"
+      ],
+      "top_score": 0.5389108750608282,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27366.10766200465,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "out-of-scope-06",
+      "category": "out_of_scope",
+      "expected": "abstain",
+      "behaviour": "abstain",
+      "answer": "The documents I found don't contain the answer to this question, so I don't know.",
+      "abstain_reason": "insufficient_evidence",
+      "retrieved_documents": [
+        "globex/engineering/incident-response.md",
+        "globex/engineering/access-control.md",
+        "globex/engineering/architecture-guidelines.md",
+        "globex/engineering/deployment-process.md",
+        "globex/engineering/data-retention.md"
+      ],
+      "top_score": 0.5150943551985913,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 27995.4053160036,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "chitchat-01",
+      "category": "chitchat",
+      "expected": "reply",
+      "behaviour": "reply",
+      "answer": "Hello! I answer questions about your organization's documents: policies, runbooks, product specs and more. What would you like to know?",
+      "abstain_reason": null,
+      "retrieved_documents": [],
+      "top_score": null,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 6265.657753989217,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "chitchat-02",
+      "category": "chitchat",
+      "expected": "reply",
+      "behaviour": "reply",
+      "answer": "Hello! I answer questions about your organization's documents: policies, runbooks, product specs and more. What would you like to know?",
+      "abstain_reason": null,
+      "retrieved_documents": [],
+      "top_score": null,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 6917.797807996976,
+      "expected_documents": [],
+      "correct": true
+    },
+    {
+      "id": "chitchat-03",
+      "category": "chitchat",
+      "expected": "reply",
+      "behaviour": "reply",
+      "answer": "Hello! I answer questions about your organization's documents: policies, runbooks, product specs and more. What would you like to know?",
+      "abstain_reason": null,
+      "retrieved_documents": [],
+      "top_score": null,
+      "cited_documents": [],
+      "sentence_support": [],
+      "missing_facts": [],
+      "forbidden_facts": [],
+      "leaked_chunks": 0,
+      "latency_ms": 4722.177097995882,
+      "expected_documents": [],
+      "correct": true
+    }
+  ]
+}

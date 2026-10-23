@@ -6,6 +6,15 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Local models through Ollama (`provider: ollama` for embeddings and answers,
+  ADR-0022): the OpenAI adapters with a base URL, zero-padding of narrower
+  embeddings to the index width, task prefixes, `compose.ollama.yaml` and
+  `make up-ollama`, and the `ollama` evaluation profile with its first report
+  (nomic-embed-text and qwen3:4b: hit@1 100 %, citation precision 100 %, 0 leaks).
+- Pinecone verified: the vector-store contract tests pass against a real
+  serverless index.
+
 ## [1.0.0] - 2026-10-22
 
 ### Added

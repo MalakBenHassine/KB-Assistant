@@ -1,0 +1,28 @@
+# Local models through Ollama on the host: free, no key (ADR-0022).
+#
+#   ollama pull nomic-embed-text && ollama pull qwen3:4b
+#   make clean && make up-ollama && make demo
+#
+# `make clean` first: documents embedded by another model live in another
+# vector space and must be ingested again.
+
+x-ollama: &ollama
+  KB_EMBEDDINGS__PROVIDER: ollama
+  KB_EMBEDDINGS__MODEL: nomic-embed-text
+  KB_EMBEDDINGS__MODEL_DIMENSION: "768"
+  KB_EMBEDDINGS__QUERY_PREFIX: "search_query: "
+  KB_EMBEDDINGS__DOCUMENT_PREFIX: "search_document: "
+  KB_LLM__PROVIDER: ollama
+  KB_LLM__MODEL: qwen3:4b
+  KB_LLM__TIMEOUT_S: "300"
+  # Calibrated for nomic-embed-text (docs/EVALUATION.md §5).
+  KB_RETRIEVAL__MIN_SCORE: "0.35"
+
+services:
+  api:
+    environment: *ollama
+    # Docker Desktop resolves the name itself; a Linux engine needs the mapping.
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  worker:
+    environment: *ollama
+    extra_hosts: ["host.docker.internal:host-gateway"]

@@ -29,3 +29,9 @@ false_abstention_rate = 0.04  # baseline 0.000
 [openai.max]
 leaked_chunks = 0
 forbidden_facts = 0
+
+# Local models through Ollama (`KB_EVAL_PROFILE=ollama make eval`): isolation
+# only until a baseline is recorded.
+[ollama.max]
+leaked_chunks = 0
+forbidden_facts = 0
