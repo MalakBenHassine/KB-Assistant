@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-23
+
 ### Added
 - Local models through Ollama (`provider: ollama` for embeddings and answers,
   ADR-0022): the OpenAI adapters with a base URL, zero-padding of narrower
@@ -95,5 +97,6 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `retrieval.min_score` defaults to the calibrated 0.07 instead of the 0.2
   placeholder, which refused 9 % of answerable questions on the evaluation set.
 
-[Unreleased]: https://github.com/MalakBenHassine/KB-Assistant/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/MalakBenHassine/KB-Assistant/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/MalakBenHassine/KB-Assistant/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/MalakBenHassine/KB-Assistant/releases/tag/v1.0.0

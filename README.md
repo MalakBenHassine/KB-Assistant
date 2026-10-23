@@ -8,7 +8,7 @@
 [![Security](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/security.yml)
 [![CD](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml/badge.svg)](https://github.com/MalakBenHassine/KB-Assistant/actions/workflows/cd.yml)
 
-**Status: v1.0.0, complete.** A web app where employees ask questions and get
+**Status: v1.1.0, complete.** A web app where employees ask questions and get
 cited answers streamed sentence by sentence, drawn only from what they may
 read; admins manage documents and see analytics, knowledge gaps, budgets and a
 tamper-evident audit log. Every pull request is measured on an 88-question
