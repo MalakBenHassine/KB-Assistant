@@ -2,7 +2,9 @@
 
 `KB_EVAL_PROFILE=offline` (the default, and CI) uses the hashing embedder and
 the extractive model; `openai` uses the hosted models and needs
-`OPENAI_API_KEY`. Retrieval settings come from the environment like in
+`OPENAI_API_KEY`; `ollama` uses local models served by Ollama
+(`KB_EVAL_OLLAMA_URL`, default http://127.0.0.1:11434/v1; docs/EVALUATION.md §5).
+Retrieval settings come from the environment like in
 production (`KB_RETRIEVAL__MIN_SCORE`, ...), so a candidate configuration is
 evaluated without editing code.
 """
@@ -26,7 +28,7 @@ from tests.conftest import Database, make_settings, make_worker_settings
 from tests.fakes import RecordingJobQueue
 from tests.support import fast_hasher
 
-PROFILES = ("offline", "openai")
+PROFILES = ("offline", "openai", "ollama")
 
 
 @pytest.fixture(scope="session")
@@ -40,6 +42,8 @@ def profile() -> str:
 def _overrides(profile: str, *, api: bool) -> dict[str, Any]:
     if profile == "offline":
         return {}
+    if profile == "ollama":
+        return _ollama(api=api)
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         raise pytest.UsageError("the openai profile needs OPENAI_API_KEY")
@@ -49,6 +53,25 @@ def _overrides(profile: str, *, api: bool) -> dict[str, Any]:
     if api:
         model = os.environ.get("KB_EVAL_LLM_MODEL", LLMSettings().model)
         overrides["llm"] = LLMSettings(provider="openai", api_key=SecretStr(key), model=model)
+    return overrides
+
+
+def _ollama(*, api: bool) -> dict[str, Any]:
+    url = os.environ.get("KB_EVAL_OLLAMA_URL", "http://127.0.0.1:11434/v1")
+    overrides: dict[str, Any] = {
+        "embeddings": EmbeddingSettings(
+            provider="ollama",
+            base_url=url,
+            model="nomic-embed-text",
+            model_dimension=768,
+            query_prefix="search_query: ",
+            document_prefix="search_document: ",
+        )
+    }
+    if api:
+        model = os.environ.get("KB_EVAL_LLM_MODEL", "qwen3:4b")
+        # A small model on a laptop GPU: generous time, not a reason to fail.
+        overrides["llm"] = LLMSettings(provider="ollama", base_url=url, model=model, timeout_s=300)
     return overrides
 
 

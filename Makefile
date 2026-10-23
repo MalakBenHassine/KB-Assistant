@@ -61,6 +61,9 @@ demo: seed ## Seed, then load the 31 evaluation documents into the demo tenants
 	scripts/load-demo-corpus.sh
 
 .PHONY: down
+up-ollama: env keys ## Start the stack on local models served by Ollama (ADR-0022)
+	$(COMPOSE) -f compose.yaml -f compose.ollama.yaml up --build --detach --wait
+
 down: ## Stop the stack (data is kept)
 	$(COMPOSE) down
 

@@ -81,3 +81,18 @@ def test_hosted_providers_require_their_credentials(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("KB_VECTOR_STORE__PROVIDER", "pinecone")
     with pytest.raises(ValidationError, match="pinecone"):
         WorkerSettings()
+
+
+def test_a_local_ollama_model_needs_no_key_and_cannot_be_wider_than_the_index(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _env(monkeypatch, with_auth=False)
+    monkeypatch.setenv("KB_EMBEDDINGS__PROVIDER", "ollama")
+    monkeypatch.setenv("KB_EMBEDDINGS__MODEL_DIMENSION", "768")
+    monkeypatch.setenv("KB_LLM__PROVIDER", "ollama")
+    settings = WorkerSettings()
+    assert settings.embeddings.api_key is None
+    assert settings.embeddings.base_url.endswith(":11434/v1")
+    monkeypatch.setenv("KB_EMBEDDINGS__MODEL_DIMENSION", "3072")
+    with pytest.raises(ValidationError, match="model_dimension"):
+        WorkerSettings()

@@ -7,7 +7,11 @@ import pytest
 from openai import APITimeoutError, AuthenticationError
 
 from kb_assistant.domain.errors import IngestionError, ProviderUnavailableError
-from kb_assistant.infrastructure.embeddings import HashingEmbedder, OpenAIEmbedder
+from kb_assistant.infrastructure.embeddings import (
+    HashingEmbedder,
+    OpenAIEmbedder,
+    ZeroPaddedEmbedder,
+)
 from tests.fakes import WordTokenizer
 
 
@@ -99,3 +103,33 @@ async def test_bad_credentials_are_not_retried() -> None:
 def test_limits_beyond_the_provider_are_refused() -> None:
     with pytest.raises(ValueError, match="max_inputs"):
         embedder(_FakeEmbeddings([]), max_inputs=5_000)
+
+
+async def test_task_prefixes_reach_the_model() -> None:
+    fake = _FakeEmbeddings([])
+    adapter = embedder(fake, query_prefix="search_query: ", document_prefix="search_document: ")
+    await adapter.embed_documents(["annual leave"])
+    await adapter.embed_query("how many days")
+    assert fake.inputs == [["search_document: annual leave"], ["search_query: how many days"]]
+
+
+async def test_zero_padding_keeps_cosine_similarity_exactly() -> None:
+    inner = HashingEmbedder(64)
+    padded = ZeroPaddedEmbedder(inner, 1536)
+    texts = ["annual leave is 25 days", "kubernetes failover runbook"]
+    narrow = await inner.embed_documents(texts)
+    wide = await padded.embed_documents(texts)
+    query = "how many days of annual leave"
+    q_narrow, q_wide = await inner.embed_query(query), await padded.embed_query(query)
+
+    assert padded.dimension == 1536
+    assert padded.model_id == inner.model_id
+    assert all(len(v) == 1536 for v in (*wide.vectors, q_wide))
+    assert wide.total_tokens == narrow.total_tokens
+    for a, b in zip(narrow.vectors, wide.vectors, strict=True):
+        assert math.isclose(cosine(q_narrow, a), cosine(q_wide, b), abs_tol=1e-12)
+
+
+def test_zero_padding_never_truncates() -> None:
+    with pytest.raises(ValueError, match="cannot pad"):
+        ZeroPaddedEmbedder(HashingEmbedder(1536), 768)

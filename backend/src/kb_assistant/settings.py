@@ -69,11 +69,23 @@ class StorageSettings(BaseModel):
     create_bucket: bool = False  # local and test only
 
 
+# Ollama's OpenAI-compatible API on the Docker host (Docker Desktop's name for it).
+OLLAMA_URL = "http://host.docker.internal:11434/v1"
+
+
 class EmbeddingSettings(BaseModel):
-    # `hashing` runs offline with no key (tests, CI, demo); `openai` is the real model.
-    provider: Literal["hashing", "openai"] = "hashing"
+    # `hashing` runs offline with no key (tests, CI, demo); `openai` is the hosted
+    # model; `ollama` is a local model behind Ollama's OpenAI-compatible API.
+    provider: Literal["hashing", "openai", "ollama"] = "hashing"
     model: str = "text-embedding-3-small"
     dimension: int = Field(default=1536, gt=0)
+    # The model's own width when it is narrower than the index: its vectors are
+    # zero-padded to `dimension`, which leaves cosine similarity unchanged (ADR-0022).
+    model_dimension: int | None = Field(default=None, gt=0)
+    # Task prefixes some models are trained with (nomic-embed-text: "search_query: ").
+    query_prefix: str = ""
+    document_prefix: str = ""
+    base_url: str = OLLAMA_URL  # ollama only
     api_key: SecretStr | None = None
     timeout_s: float = Field(default=30.0, gt=0)
     batch_max_inputs: int = Field(default=256, ge=1, le=2_048)
@@ -83,6 +95,8 @@ class EmbeddingSettings(BaseModel):
     def _key_for_hosted_models(self) -> "EmbeddingSettings":
         if self.provider == "openai" and not (self.api_key and self.api_key.get_secret_value()):
             raise ValueError("embeddings.api_key is required when provider is openai")
+        if self.model_dimension is not None and self.model_dimension > self.dimension:
+            raise ValueError("embeddings.model_dimension cannot exceed embeddings.dimension")
         return self
 
 
@@ -111,9 +125,11 @@ class IngestionSettings(BaseModel):
 
 
 class LLMSettings(BaseModel):
-    # `extractive` runs offline (tests, CI, demo); `openai` is the real model.
-    provider: Literal["extractive", "openai"] = "extractive"
+    # `extractive` runs offline (tests, CI, demo); `openai` is the hosted model;
+    # `ollama` is a local model behind Ollama's OpenAI-compatible Responses API.
+    provider: Literal["extractive", "openai", "ollama"] = "extractive"
     model: str = "gpt-5.6-terra"
+    base_url: str = OLLAMA_URL  # ollama only
     api_key: SecretStr | None = None
     reasoning_effort: Literal["none", "low", "medium", "high"] = "low"
     timeout_s: float = Field(default=60.0, gt=0)

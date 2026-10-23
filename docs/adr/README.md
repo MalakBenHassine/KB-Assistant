@@ -28,5 +28,6 @@ the history of *why* is never rewritten.
 | [0019](0019-a-per-tenant-hash-chain-makes-the-audit-log-tamper-evident.md) | A per-tenant hash chain makes the audit log tamper-evident | Proposed |
 | [0020](0020-render-every-page-per-request-for-a-nonce-based-csp.md) | Render every page per request for a nonce-based CSP; BFF details | Proposed |
 | [0021](0021-observability-and-kubernetes-packaging.md) | Observability through ports, and a Helm chart hardened by default | Proposed |
+| [0022](0022-local-models-through-ollama-zero-padded-to-the-index-width.md) | Run local models through Ollama, zero-padded to the index width | Proposed |
 
 Template: [`template.md`](template.md).

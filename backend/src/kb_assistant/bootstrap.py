@@ -15,6 +15,7 @@ from typing import Any
 from openai import AsyncOpenAI
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from pinecone import AsyncIndex, AsyncPinecone
+from pydantic import SecretStr
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -46,7 +47,11 @@ from kb_assistant.infrastructure.clock import SystemClock
 from kb_assistant.infrastructure.db.engine import build_engine, build_sessionmaker
 from kb_assistant.infrastructure.db.tables import EMBEDDING_DIMENSION
 from kb_assistant.infrastructure.db.uow import SqlAlchemyUnitOfWork
-from kb_assistant.infrastructure.embeddings import HashingEmbedder, OpenAIEmbedder
+from kb_assistant.infrastructure.embeddings import (
+    HashingEmbedder,
+    OpenAIEmbedder,
+    ZeroPaddedEmbedder,
+)
 from kb_assistant.infrastructure.jobs import CeleryJobQueue, celery_producer
 from kb_assistant.infrastructure.llm.extractive import ExtractiveChatModel
 from kb_assistant.infrastructure.llm.openai_chat import OpenAIChatModel
@@ -103,21 +108,33 @@ def build_blob_store(settings: StorageSettings) -> S3BlobStore:
     )
 
 
+def _openai_client(provider: str, base_url: str, api_key: SecretStr | None) -> AsyncOpenAI:
+    if provider == "ollama":
+        # Ollama ignores the key; the SDK insists on one.
+        return AsyncOpenAI(base_url=base_url, api_key="ollama", max_retries=0)
+    if api_key is None:  # also rejected by the settings' validators
+        raise ValueError(f"an api_key is required for {provider}")
+    return AsyncOpenAI(api_key=api_key.get_secret_value(), max_retries=0)
+
+
 def build_embedder(settings: EmbeddingSettings, tokenizer: Tokenizer) -> Embedder:
     if settings.provider == "hashing":
         return HashingEmbedder(settings.dimension)
-    if settings.api_key is None:  # also rejected by EmbeddingSettings' validator
-        raise ValueError("embeddings.api_key is required for openai")
-    client = AsyncOpenAI(api_key=settings.api_key.get_secret_value(), max_retries=0)
-    return OpenAIEmbedder(
-        client,
+    width = settings.model_dimension or settings.dimension
+    embedder = OpenAIEmbedder(
+        _openai_client(settings.provider, settings.base_url, settings.api_key),
         model=settings.model,
-        dimension=settings.dimension,
+        dimension=width,
         tokenizer=tokenizer,
         max_inputs=settings.batch_max_inputs,
         max_request_tokens=settings.batch_max_tokens,
         timeout_s=settings.timeout_s,
+        query_prefix=settings.query_prefix,
+        document_prefix=settings.document_prefix,
     )
+    if width < settings.dimension:
+        return ZeroPaddedEmbedder(embedder, settings.dimension)
+    return embedder
 
 
 def build_vector_store(
@@ -148,10 +165,8 @@ def build_vector_store(
 def build_chat_model(settings: LLMSettings) -> ChatModel:
     if settings.provider == "extractive":
         return ExtractiveChatModel()
-    if settings.api_key is None:  # also rejected by LLMSettings' validator
-        raise ValueError("llm.api_key is required for openai")
     return OpenAIChatModel(
-        AsyncOpenAI(api_key=settings.api_key.get_secret_value(), max_retries=0),
+        _openai_client(settings.provider, settings.base_url, settings.api_key),
         model=settings.model,
         reasoning_effort=settings.reasoning_effort,
         timeout_s=settings.timeout_s,
